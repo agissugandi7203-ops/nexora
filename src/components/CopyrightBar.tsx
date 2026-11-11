@@ -8,8 +8,7 @@ export const CopyrightBar: React.FC = () => {
           <span>&copy; {new Date().getFullYear()} Marhas LMS &middot; SMK Marhas Margahayu. All rights reserved.</span>
         </div>
         <div className="flex items-center gap-1.5 font-medium text-slate-600">
-          <span>Dibuat dengan dedikasi di Margahayu, Bandung &mdash; Indonesia</span>
-          <span aria-label="Bendera Indonesia">🇮🇩</span>
+          <span>Dibuat dengan dedikasi di Margahayu, Bandung</span>
         </div>
       </div>
     </div>

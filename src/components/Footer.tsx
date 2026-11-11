@@ -162,7 +162,6 @@ export const FooterCard: React.FC = () => {
               className="hover:text-[#1E293B] transition-colors flex items-center gap-1.5"
             >
               <span>Margahayu, Bandung</span>
-              <span aria-label="Indonesia">🇮🇩</span>
             </a>
             <div className="w-[1px] h-4 bg-slate-300 hidden sm:block" />
             <a
