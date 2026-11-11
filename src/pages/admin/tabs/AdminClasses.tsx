@@ -9,10 +9,13 @@ import {
   X,
   CheckCircle2,
   ChevronRight,
-  Sparkles
+  Sparkles,
+  Search,
+  Filter,
 } from 'lucide-react';
 import { useData } from '../../../context/DataContext';
 import { ClassItem, Student } from '../../../types/database.types';
+import { ConfirmDialog } from '../../../components/ui/ConfirmDialog';
 
 export const AdminClasses: React.FC = () => {
   const { classes, students, addClass, updateClass, deleteClass, updateStudent } = useData();
@@ -23,6 +26,9 @@ export const AdminClasses: React.FC = () => {
   const [transferStudent, setTransferStudent] = useState<Student | null>(null);
   const [targetClassId, setTargetClassId] = useState('');
   const [notification, setNotification] = useState<string | null>(null);
+  const [classToDelete, setClassToDelete] = useState<ClassItem | null>(null);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedLevel, setSelectedLevel] = useState<string>('all');
 
   const [formData, setFormData] = useState({
     name: '',
@@ -67,15 +73,15 @@ export const AdminClasses: React.FC = () => {
     showNotif('Informasi kelas berhasil diperbarui!');
   };
 
-  const handleDelete = async (id: string) => {
-    if (confirm('Yakin ingin menghapus kelas ini? Siswa di kelas ini akan dipindahkan statusnya.')) {
-      const res = await deleteClass(id);
-      if (res && !res.success) {
-        alert('Gagal menghapus kelas: ' + (res.error || 'Terjadi kesalahan pada database'));
-        return;
-      }
-      showNotif('Kelas berhasil dihapus.');
+  const handleConfirmDelete = async () => {
+    if (!classToDelete) return;
+    const res = await deleteClass(classToDelete.id);
+    if (res && !res.success) {
+      showNotif('Gagal menghapus kelas: ' + (res.error || 'Terjadi kesalahan pada database'));
+    } else {
+      showNotif(`Kelas ${classToDelete.name} berhasil dihapus.`);
     }
+    setClassToDelete(null);
   };
 
   const handleTransfer = async () => {
@@ -90,6 +96,24 @@ export const AdminClasses: React.FC = () => {
     setTargetClassId('');
   };
 
+  const availableLevels = Array.from(new Set(classes.map((c) => c.level))).sort();
+
+  const filteredClasses = classes.filter((cls) => {
+    const q = searchTerm.trim().toLowerCase();
+    const matchLevel = selectedLevel === 'all' || cls.level === selectedLevel;
+    if (!q) return matchLevel;
+
+    const matchSearch =
+      cls.name.toLowerCase().includes(q) ||
+      cls.level.toLowerCase().includes(q) ||
+      `tingkat ${cls.level}`.toLowerCase().includes(q) ||
+      `kelas ${cls.level}`.toLowerCase().includes(q) ||
+      cls.academic_year.toLowerCase().includes(q) ||
+      (cls.description || '').toLowerCase().includes(q);
+
+    return matchSearch && matchLevel;
+  });
+
   return (
     <div className="space-y-6">
       {/* Toast Notification */}
@@ -103,9 +127,9 @@ export const AdminClasses: React.FC = () => {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h3 className="text-xl font-bold text-slate-900">Manajemen Kelas</h3>
-          <p className="text-xs text-slate-400 mt-0.5">
-            Kelola tingkatan kelas (SMP/SMA/Umum), daftar rombel, dan penempatan siswa
+          <h3 className="text-xl font-extrabold text-slate-900">Manajemen Kelas</h3>
+          <p className="text-xs text-slate-500 font-medium mt-0.5">
+            Kelola tingkatan kelas (SMP/SMA/Umum), daftar rombel, dan penempatan siswa sekolah
           </p>
         </div>
 
@@ -118,62 +142,145 @@ export const AdminClasses: React.FC = () => {
         </button>
       </div>
 
+      {/* Search and Filter Bar */}
+      <div className="bg-white p-4 rounded-3xl border border-slate-200/80 shadow-sm flex flex-col sm:flex-row gap-3 items-center justify-between">
+        <div className="relative w-full sm:w-80">
+          <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+          <input
+            type="text"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            placeholder="Cari nama kelas, tingkat, atau tahun ajaran..."
+            className="w-full pl-10 pr-4 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:border-[#3b5bf5] focus:bg-white"
+          />
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2 self-start sm:self-auto">
+          <button
+            type="button"
+            onClick={() => setSelectedLevel('all')}
+            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
+              selectedLevel === 'all'
+                ? 'bg-slate-900 text-white shadow-sm'
+                : 'bg-slate-100 hover:bg-slate-200 text-slate-600'
+            }`}
+          >
+            Semua ({classes.length})
+          </button>
+          {availableLevels.map((lvl) => {
+            const count = classes.filter((c) => c.level === lvl).length;
+            return (
+              <button
+                key={lvl}
+                type="button"
+                onClick={() => setSelectedLevel(lvl)}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                  selectedLevel === lvl
+                    ? 'bg-[#3b5bf5] text-white shadow-sm'
+                    : 'bg-slate-100 hover:bg-slate-200 text-slate-600'
+                }`}
+              >
+                Tingkat {lvl} ({count})
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
       {/* Class Cards Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {classes.map((cls) => {
-          const classStudents = students.filter((s) => s.class_id === cls.id);
+        {filteredClasses.length === 0 ? (
+          <div className="col-span-full py-12 text-center bg-white rounded-3xl border border-slate-200/80 p-8 space-y-3">
+            <School className="w-10 h-10 text-slate-300 mx-auto" />
+            <h4 className="text-sm font-bold text-slate-800">
+              {searchTerm ? `Tidak ada kelas yang cocok dengan "${searchTerm}"` : 'Tidak ada kelas'}
+            </h4>
+            <p className="text-xs text-slate-400 max-w-sm mx-auto">
+              {searchTerm ? 'Coba periksa kata kunci Anda atau klik tombol di bawah untuk menyetel ulang.' : 'Belum ada kelas yang terdaftar di sistem.'}
+            </p>
+            {searchTerm && (
+              <button
+                type="button"
+                onClick={() => setSearchTerm('')}
+                className="mt-2 px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition-all"
+              >
+                Reset Pencarian
+              </button>
+            )}
+          </div>
+        ) : (
+          filteredClasses.map((cls) => {
+            const classStudents = students.filter((s) => s.class_id === cls.id);
 
-          return (
-            <div
-              key={cls.id}
-              className="bg-white rounded-3xl p-6 border border-slate-200/80 shadow-sm flex flex-col justify-between group hover:shadow-md hover:border-[#3b5bf5]/30 transition-all"
-            >
-              <div>
-                <div className="flex items-center justify-between mb-4">
-                  <span className="px-3 py-1 rounded-full bg-blue-50 text-[#3b5bf5] border border-blue-200 text-xs font-bold">
-                    Tingkat {cls.level} &bull; {cls.academic_year}
-                  </span>
-                  <div className="flex items-center gap-1 opacity-80 group-hover:opacity-100 transition-opacity">
-                    <button
-                      onClick={() => setEditingClass(cls)}
-                      className="p-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 hover:text-slate-900 transition-colors"
-                      title="Edit Kelas"
-                    >
-                      <Edit2 className="w-3.5 h-3.5" />
-                    </button>
-                    <button
-                      onClick={() => handleDelete(cls.id)}
-                      className="p-1.5 rounded-lg bg-slate-100 hover:bg-rose-50 text-slate-600 hover:text-rose-600 transition-colors"
-                      title="Hapus Kelas"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
+            return (
+              <div
+                key={cls.id}
+                className="bg-white rounded-3xl p-6 border border-slate-200/90 shadow-sm flex flex-col justify-between group hover:shadow-md hover:border-[#3b5bf5]/40 transition-all"
+              >
+                <div>
+                  <div className="flex items-center justify-between mb-4">
+                    <span className="px-3 py-1 rounded-full bg-blue-50 text-[#3b5bf5] border border-blue-200/80 text-[11px] font-bold">
+                      Tingkat {cls.level} &bull; {cls.academic_year}
+                    </span>
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        onClick={() => setEditingClass(cls)}
+                        className="p-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 hover:text-slate-900 transition-colors"
+                        title="Edit Kelas"
+                      >
+                        <Edit2 className="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        onClick={() => setClassToDelete(cls)}
+                        className="p-1.5 rounded-xl bg-slate-100 hover:bg-rose-50 text-slate-600 hover:text-rose-600 transition-colors"
+                        title="Hapus Kelas"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
                   </div>
+
+                  <h4 className="text-xl font-extrabold text-slate-900 mb-2 tracking-tight">
+                    {cls.name}
+                  </h4>
+                  <p className="text-xs text-slate-500 mb-6 line-clamp-2 leading-relaxed font-medium">
+                    {cls.description || 'Tidak ada catatan deskripsi khusus.'}
+                  </p>
                 </div>
 
-                <h4 className="text-xl font-bold text-slate-900 mb-2">{cls.name}</h4>
-                <p className="text-xs text-slate-500 mb-6 line-clamp-2 leading-relaxed">
-                  {cls.description || 'Tidak ada deskripsi khusus.'}
-                </p>
-              </div>
+                <div className="pt-4 border-t border-slate-100 flex items-center justify-between">
+                  <div className="flex items-center gap-2.5">
+                    {/* Avatar stack */}
+                    <div className="flex -space-x-1.5 overflow-hidden">
+                      {classStudents.slice(0, 3).map((st) => (
+                        <img
+                          key={st.id}
+                          src={
+                            st.profile?.avatar_url ||
+                            `https://api.dicebear.com/7.x/bottts/svg?seed=${st.nis_nisn}`
+                          }
+                          alt=""
+                          className="inline-block h-6 w-6 rounded-full ring-2 ring-white object-cover bg-slate-100"
+                        />
+                      ))}
+                    </div>
+                    <span className="text-xs font-bold text-slate-700">
+                      {classStudents.length} Siswa
+                    </span>
+                  </div>
 
-              <div className="pt-4 border-t border-slate-100 flex items-center justify-between">
-                <div className="flex items-center gap-2 text-xs text-slate-600 font-medium">
-                  <Users className="w-4 h-4 text-[#3b5bf5]" />
-                  <span>{classStudents.length} Siswa Terdaftar</span>
+                  <button
+                    onClick={() => setInspectClass(cls)}
+                    className="inline-flex items-center gap-1 text-xs font-bold text-[#3b5bf5] hover:text-blue-700 transition-colors group-hover:translate-x-0.5 transform"
+                  >
+                    <span>Daftar Siswa</span>
+                    <ChevronRight className="w-4 h-4" />
+                  </button>
                 </div>
-
-                <button
-                  onClick={() => setInspectClass(cls)}
-                  className="inline-flex items-center gap-1 text-xs font-semibold text-[#3b5bf5] hover:underline"
-                >
-                  <span>Lihat Siswa</span>
-                  <ChevronRight className="w-4 h-4" />
-                </button>
               </div>
-            </div>
-          );
-        })}
+            );
+          })
+        )}
       </div>
 
       {/* Modal: Tambah Kelas */}
@@ -476,6 +583,19 @@ export const AdminClasses: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* Confirmation Dialog: Hapus Kelas */}
+      <ConfirmDialog
+        isOpen={Boolean(classToDelete)}
+        onClose={() => setClassToDelete(null)}
+        onConfirm={handleConfirmDelete}
+        title={`Yakin Ingin Menghapus Kelas ${classToDelete?.name || ''}?`}
+        description="Kelas ini akan dihapus dari sistem. Siswa yang terdaftar pada kelas ini akan dilepas penempatannya dan dapat Anda tempatkan ulang ke kelas lain."
+        confirmLabel="Ya, Hapus Kelas"
+        cancelLabel="Batal"
+        variant="danger"
+        icon="trash"
+      />
     </div>
   );
 };

@@ -4,8 +4,10 @@ import { AuthProvider, useAuth } from './context/AuthContext';
 import { DataProvider } from './context/DataContext';
 
 import { LandingPage } from './pages/LandingPage';
+import { ViktorLandingPage } from './pages/ViktorLandingPage';
 import { LoginAdmin } from './pages/LoginAdmin';
 import { LoginStudent } from './pages/LoginStudent';
+import { SignupPage } from './pages/SignupPage';
 import { AdminLayout } from './pages/admin/AdminLayout';
 import { StudentLayout } from './pages/student/StudentLayout';
 
@@ -43,6 +45,15 @@ export const App: React.FC = () => {
             <Routes>
               {/* Public Routes */}
               <Route path="/" element={<LandingPage />} />
+              <Route path="/viktor" element={<ViktorLandingPage />} />
+              <Route
+                path="/login"
+                element={
+                  <PublicAuthRoute>
+                    <LoginStudent />
+                  </PublicAuthRoute>
+                }
+              />
               <Route
                 path="/login-admin"
                 element={
@@ -56,6 +67,22 @@ export const App: React.FC = () => {
                 element={
                   <PublicAuthRoute>
                     <LoginStudent />
+                  </PublicAuthRoute>
+                }
+              />
+              <Route
+                path="/signup"
+                element={
+                  <PublicAuthRoute>
+                    <SignupPage />
+                  </PublicAuthRoute>
+                }
+              />
+              <Route
+                path="/daftar"
+                element={
+                  <PublicAuthRoute>
+                    <SignupPage />
                   </PublicAuthRoute>
                 }
               />

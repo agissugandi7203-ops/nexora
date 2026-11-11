@@ -1,169 +1,943 @@
 /* ==========================================================================
-   SMK MARHAS LOGIN STYLESHEET (Terpisah & Terisolasi dari Dashboard/Landing)
+   CUTORA LOG-IN HERO SPECIFICATION & STYLESHEET
+   Artboard reference: 1672 x 941
+   Scale factor: --u = max(.62px, min(100vw/1672, 100dvh/941))
    ========================================================================== */
 
-.marhas-login-scope {
-  background-color: #f4f7fb;
-  background-image:
-    radial-gradient(at 12% 15%, rgba(250, 204, 21, 0.25) 0px, transparent 45%),
-    radial-gradient(at 88% 18%, rgba(56, 189, 248, 0.25) 0px, transparent 50%),
-    radial-gradient(at 82% 85%, rgba(16, 185, 129, 0.20) 0px, transparent 48%),
-    radial-gradient(at 15% 88%, rgba(249, 115, 22, 0.16) 0px, transparent 45%);
-  color: #0f172a;
+:root {
+  --cutora-u: max(0.62px, min(calc(100vw / 1672), calc(100dvh / 941)));
+  --color-cutora-ink: #000000;
+  --color-cutora-secondary: #5F636B;
+  --color-cutora-muted: #898D94;
+  --color-cutora-placeholder: #95999F;
+  --color-cutora-lines: #E2E4E7;
+  --color-cutora-lines-subtle: #E9EAEC;
+  --color-cutora-card: #FEFEFE;
+  --color-cutora-button: #161515;
+  --color-cutora-amber: #F59A08;
+  --color-cutora-amber-light: #FBAE05;
+}
+
+.cutora-viewport {
   position: relative;
-  overflow-x: hidden;
-}
-
-/* Grid buku catatan / teknik SMK */
-.marhas-grid-pattern {
-  background-size: 32px 32px;
-  background-image: 
-    linear-gradient(to right, rgba(15, 23, 42, 0.04) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(15, 23, 42, 0.04) 1px, transparent 1px);
-}
-
-/* Kartu Utama Login dengan gaya Ceria & Taktil */
-.marhas-auth-container {
-  background: #ffffff;
-  border: 2.5px solid #0f172a;
-  box-shadow: 0 12px 0 0 #0f172a, 0 25px 50px -12px rgba(15, 23, 42, 0.18);
-  border-radius: 2rem;
+  width: 100vw;
+  height: 100dvh;
   overflow: hidden;
+  display: flex;
+  flex-direction: row;
+  background-color: #0c0d11;
+  font-family: 'Red Hat Display', 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+  color: var(--color-cutora-ink);
+  -webkit-font-smoothing: antialiased;
 }
 
-/* Panel Visual Kiri untuk Siswa (Biru Cerah - Kuning Ceria SMK) */
-.marhas-banner-student {
-  background: linear-gradient(145deg, #1d4ed8 0%, #0284c7 55%, #0ea5e9 100%);
-  position: relative;
-  overflow: hidden;
-}
-
-/* Panel Visual Kiri untuk Guru (Teal Emerald - Biru Akademik) */
-.marhas-banner-teacher {
-  background: linear-gradient(145deg, #0f172a 0%, #1e3a8a 52%, #0284c7 100%);
-  position: relative;
-  overflow: hidden;
-}
-
-/* Ornamen lingkaran dekoratif di dalam banner */
-.marhas-deco-circle {
+/* --------------------------------------------------------------------------
+   MEDIA LAYER: Photographic Plate + 4s Muted Video Loop + Readability Washes
+   -------------------------------------------------------------------------- */
+.cutora-media-layer {
   position: absolute;
-  border-radius: 9999px;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 0;
+  overflow: hidden;
   pointer-events: none;
 }
 
-/* Badge / Stiker Sekolah Mengambang */
-.marhas-sticker {
-  background: #ffffff;
-  border: 2px solid #0f172a;
-  box-shadow: 0 4px 0 0 #0f172a;
-  border-radius: 1rem;
-  color: #0f172a;
-}
-
-.marhas-pill-yellow {
-  background: #facc15;
-  border: 2px solid #0f172a;
-  box-shadow: 0 3px 0 0 #0f172a;
-  color: #0f172a;
-}
-
-.marhas-pill-emerald {
-  background: #34d399;
-  border: 2px solid #0f172a;
-  box-shadow: 0 3px 0 0 #0f172a;
-  color: #0f172a;
-}
-
-.marhas-pill-coral {
-  background: #fb923c;
-  border: 2px solid #0f172a;
-  box-shadow: 0 3px 0 0 #0f172a;
-  color: #0f172a;
-}
-
-/* Input Form Login */
-.marhas-input {
+.cutora-plate-image {
+  position: absolute;
+  inset: 0;
   width: 100%;
-  background-color: #f8fafc;
-  border: 2px solid #cbd5e1;
-  border-radius: 1rem;
-  color: #0f172a;
+  height: 100%;
+  background-image: url('https://d2ol7oe51mr4n9.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/e781b542-a83d-4cf2-a66a-44085485865d.jpg');
+  background-size: cover;
+  background-position: center center;
+  background-repeat: no-repeat;
+  z-index: 1;
+}
+
+.cutora-motion-video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center center;
+  z-index: 2;
+  opacity: 0;
+  transition: opacity 0.8s ease-in-out;
+}
+
+.cutora-motion-video.loaded {
+  opacity: 1;
+}
+
+.cutora-readability-washes {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  pointer-events: none;
+  background:
+    /* 140u wash from top */
+    linear-gradient(to bottom, rgba(0, 0, 0, 0.62) 0%, rgba(0, 0, 0, 0.3) calc(70 * var(--cutora-u)), rgba(0, 0, 0, 0) calc(140 * var(--cutora-u))),
+    /* 150u wash from left */
+    linear-gradient(to right, rgba(0, 0, 0, 0.72) 0%, rgba(0, 0, 0, 0.38) calc(80 * var(--cutora-u)), rgba(0, 0, 0, 0) calc(150 * var(--cutora-u))),
+    /* warm rgba(20,10,0,.38) rising 420u from bottom */
+    linear-gradient(to top, rgba(20, 10, 0, 0.38) 0%, rgba(20, 10, 0, 0.22) calc(200 * var(--cutora-u)), rgba(20, 10, 0, 0) calc(420 * var(--cutora-u)));
+}
+
+/* --------------------------------------------------------------------------
+   HERO COLUMN (Left, White Text)
+   -------------------------------------------------------------------------- */
+.cutora-hero-column {
+  position: relative;
+  z-index: 10;
+  flex: 1;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  min-width: 0;
+}
+
+/* Top bar: 57u from top, 92.5u from left */
+.cutora-hero-top-bar {
+  padding-top: calc(57 * var(--cutora-u));
+  padding-left: calc(92.5 * var(--cutora-u));
+  padding-right: calc(48 * var(--cutora-u));
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  animation: cutoraFadeUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) 0.1s backwards;
+}
+
+.cutora-brand-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: calc(18 * var(--cutora-u));
+  text-decoration: none;
+}
+
+/* Logo: 48u black rounded tile (radius 12u) holding thick amber-gradient "C" */
+.cutora-logo-tile {
+  width: calc(48 * var(--cutora-u));
+  height: calc(48 * var(--cutora-u));
+  border-radius: calc(12 * var(--cutora-u));
+  background-color: #161515;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  box-shadow: 0 calc(4 * var(--cutora-u)) calc(12 * var(--cutora-u)) rgba(0, 0, 0, 0.3);
+}
+
+.cutora-logo-tile svg {
+  width: calc(27 * var(--cutora-u));
+  height: calc(27 * var(--cutora-u));
+  display: block;
+}
+
+.cutora-brand-name {
+  font-weight: 680;
+  font-size: calc(35.5 * var(--cutora-u));
+  letter-spacing: calc(-0.95 * var(--cutora-u));
+  color: #FFFFFF;
+  line-height: 1;
+}
+
+/* Link: "<- Back to Website" in light amber, 17.4u, weight 520 */
+.cutora-back-link {
+  display: inline-flex;
+  align-items: center;
+  gap: calc(8 * var(--cutora-u));
+  color: var(--color-cutora-amber-light);
+  font-size: calc(17.4 * var(--cutora-u));
+  font-weight: 520;
+  text-decoration: none;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.cutora-back-link:hover {
+  opacity: 0.85;
+  transform: translateX(calc(-2 * var(--cutora-u)));
+}
+
+/* Pitch (bottom-left) */
+.cutora-hero-pitch {
+  padding-left: calc(92.5 * var(--cutora-u));
+  padding-bottom: calc(52 * var(--cutora-u));
+  padding-right: calc(40 * var(--cutora-u));
+}
+
+/* Headline: 62u on 70u line, weight 600, tracking -2.6u, wiped out of clip */
+.cutora-headline-clip {
+  overflow: hidden;
+  display: block;
+}
+
+.cutora-headline-line {
   font-weight: 600;
-  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  font-size: calc(62 * var(--cutora-u));
+  line-height: calc(70 * var(--cutora-u));
+  letter-spacing: calc(-2.6 * var(--cutora-u));
+  color: #FFFFFF;
+  white-space: nowrap;
+  display: block;
+  transform: translateY(110%);
 }
 
-.marhas-input::placeholder {
-  color: #94a3b8;
-  font-weight: 500;
+.cutora-headline-line-1 {
+  animation: cutoraWipeUp 0.85s cubic-bezier(0.16, 1, 0.3, 1) 0.3s forwards;
 }
 
-.marhas-input:focus {
+.cutora-headline-line-2 {
+  animation: cutoraWipeUp 0.85s cubic-bezier(0.16, 1, 0.3, 1) 0.45s forwards;
+}
+
+/* Subline: weight 460, 20u on 27.5u, 19u below */
+.cutora-pitch-subline {
+  font-weight: 460;
+  font-size: calc(20 * var(--cutora-u));
+  line-height: calc(27.5 * var(--cutora-u));
+  color: rgba(255, 255, 255, 0.92);
+  margin-top: calc(19 * var(--cutora-u));
+  max-width: calc(620 * var(--cutora-u));
+  animation: cutoraFadeUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) 0.6s backwards;
+}
+
+/* Slider dots: 35.5u below, amber 34.5x9u pill, then two 9u white dots at 55%, 9u apart */
+.cutora-slider-dots {
+  margin-top: calc(35.5 * var(--cutora-u));
+  display: flex;
+  align-items: center;
+  gap: calc(9 * var(--cutora-u));
+  animation: cutoraFadeUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) 0.75s backwards;
+}
+
+.cutora-dot-item {
+  height: calc(9 * var(--cutora-u));
+  border: none;
   outline: none;
-  background-color: #ffffff;
-  border-color: #0f172a;
-  box-shadow: 0 4px 0 0 #facc15;
-  transform: translateY(-1px);
+  padding: 0;
+  cursor: pointer;
+  transition: width 0.35s cubic-bezier(0.16, 1, 0.3, 1), background-color 0.35s ease, border-radius 0.35s ease;
 }
 
-/* Tombol Utama Taktil Ceria */
-.marhas-btn-submit {
-  border: 2px solid #0f172a;
-  box-shadow: 0 5px 0 0 #0f172a;
-  border-radius: 1rem;
-  font-weight: 800;
-  transition: all 0.15s ease;
+.cutora-dot-item.active {
+  width: calc(34.5 * var(--cutora-u));
+  border-radius: calc(4.5 * var(--cutora-u));
+  background-color: var(--color-cutora-amber);
 }
 
-.marhas-btn-submit:hover:not(:disabled) {
-  transform: translateY(-2px);
-  box-shadow: 0 7px 0 0 #0f172a;
+.cutora-dot-item:not(.active) {
+  width: calc(9 * var(--cutora-u));
+  border-radius: 50%;
+  background-color: rgba(255, 255, 255, 0.55);
 }
 
-.marhas-btn-submit:active:not(:disabled) {
-  transform: translateY(3px);
-  box-shadow: 0 2px 0 0 #0f172a;
+.cutora-dot-item:not(.active):hover {
+  background-color: rgba(255, 255, 255, 0.85);
 }
 
-/* Tab Switcher Siswa / Guru */
-.marhas-role-switcher {
-  background: #f1f5f9;
-  border: 2px solid #0f172a;
-  border-radius: 1rem;
-  padding: 0.35rem;
+/* --------------------------------------------------------------------------
+   LOG-IN CARD (Right)
+   Width: 742.4u
+   Margins: 18u top/right, 22.5u bottom
+   Radius: 20u
+   Form: 559u wide, 96.2u from card's left edge, centred vertically
+   -------------------------------------------------------------------------- */
+.cutora-card-panel {
+  position: relative;
+  z-index: 10;
+  width: calc(742.4 * var(--cutora-u));
+  margin-top: calc(18 * var(--cutora-u));
+  margin-right: calc(18 * var(--cutora-u));
+  margin-bottom: calc(22.5 * var(--cutora-u));
+  height: calc(100dvh - calc((18 + 22.5) * var(--cutora-u)));
+  background: var(--color-cutora-card);
+  border-radius: calc(20 * var(--cutora-u));
+  box-shadow: 0 calc(24 * var(--cutora-u)) calc(64 * var(--cutora-u)) rgba(0, 0, 0, 0.28);
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding-left: calc(96.2 * var(--cutora-u));
+  padding-right: calc(87.2 * var(--cutora-u));
+  animation: cutoraCardSettle 1.1s cubic-bezier(0.16, 1, 0.3, 1) 0.2s backwards;
 }
 
-.marhas-role-tab-active {
-  background: #facc15;
-  color: #0f172a;
-  border: 2px solid #0f172a;
-  box-shadow: 0 2px 0 0 #0f172a;
-  font-weight: 800;
+.cutora-card-inner-form {
+  width: calc(559 * var(--cutora-u));
+  display: flex;
+  flex-direction: column;
 }
 
-/* Animasi Mengambang Halus */
-@keyframes marhasFloatSlow {
-  0%, 100% {
-    transform: translateY(0px) rotate(0deg);
+/* Portal Role Switcher Tabs (Siswa / Guru) */
+.cutora-role-pill-nav {
+  display: inline-flex;
+  background-color: #f1f3f6;
+  padding: calc(4 * var(--cutora-u));
+  border-radius: calc(12 * var(--cutora-u));
+  margin-bottom: calc(24 * var(--cutora-u));
+  gap: calc(4 * var(--cutora-u));
+  width: fit-content;
+}
+
+.cutora-role-pill-btn {
+  padding: calc(8 * var(--cutora-u)) calc(18 * var(--cutora-u));
+  border-radius: calc(9 * var(--cutora-u));
+  font-size: calc(14 * var(--cutora-u));
+  font-weight: 600;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: calc(6 * var(--cutora-u));
+  transition: all 0.2s ease;
+  color: var(--color-cutora-secondary);
+}
+
+.cutora-role-pill-btn.active {
+  background-color: #FFFFFF;
+  color: var(--color-cutora-ink);
+  box-shadow: 0 calc(2 * var(--cutora-u)) calc(8 * var(--cutora-u)) rgba(0, 0, 0, 0.08);
+}
+
+/* Heading: "Welcome Back!" weight 660, 50.6u, tracking -1.9u */
+.cutora-form-heading {
+  font-weight: 660;
+  font-size: calc(50.6 * var(--cutora-u));
+  line-height: 1.12;
+  letter-spacing: calc(-1.9 * var(--cutora-u));
+  color: var(--color-cutora-ink);
+  animation: cutoraFadeUp 0.75s cubic-bezier(0.16, 1, 0.3, 1) 0.35s backwards;
+}
+
+/* Subline: "Log in to start creating stunning videos with ease." 19u, secondary */
+.cutora-form-subline {
+  font-weight: 400;
+  font-size: calc(19 * var(--cutora-u));
+  line-height: 1.38;
+  color: var(--color-cutora-secondary);
+  margin-top: calc(8 * var(--cutora-u));
+  margin-bottom: calc(28 * var(--cutora-u));
+  animation: cutoraFadeUp 0.75s cubic-bezier(0.16, 1, 0.3, 1) 0.45s backwards;
+}
+
+/* Error banner */
+.cutora-error-banner {
+  padding: calc(12 * var(--cutora-u)) calc(16 * var(--cutora-u));
+  border-radius: calc(10 * var(--cutora-u));
+  background-color: #FEF2F2;
+  border: calc(1 * var(--cutora-u)) solid #FCA5A5;
+  color: #B91C1C;
+  font-size: calc(14.5 * var(--cutora-u));
+  font-weight: 560;
+  margin-bottom: calc(18 * var(--cutora-u));
+  display: flex;
+  align-items: center;
+  gap: calc(8 * var(--cutora-u));
+}
+
+/* Form Fields */
+.cutora-form-group {
+  margin-bottom: calc(18 * var(--cutora-u));
+}
+
+.cutora-form-group-email {
+  animation: cutoraFadeUp 0.75s cubic-bezier(0.16, 1, 0.3, 1) 0.55s backwards;
+}
+
+.cutora-form-group-password {
+  animation: cutoraFadeUp 0.75s cubic-bezier(0.16, 1, 0.3, 1) 0.65s backwards;
+  margin-bottom: 0;
+}
+
+.cutora-field-label {
+  display: block;
+  font-weight: 560;
+  font-size: calc(17.4 * var(--cutora-u));
+  color: var(--color-cutora-ink);
+  margin-bottom: calc(8 * var(--cutora-u));
+  line-height: 1.2;
+}
+
+.cutora-input-wrapper {
+  position: relative;
+  width: 100%;
+}
+
+/* Inputs: 66u height, 10u radius, 1u line border */
+.cutora-text-input {
+  width: 100%;
+  height: calc(66 * var(--cutora-u));
+  border-radius: calc(10 * var(--cutora-u));
+  border: calc(1 * var(--cutora-u)) solid var(--color-cutora-lines);
+  background-color: #FFFFFF;
+  padding: 0 calc(22 * var(--cutora-u));
+  font-family: inherit;
+  font-size: calc(17.4 * var(--cutora-u));
+  font-weight: 450;
+  color: var(--color-cutora-ink);
+  outline: none;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.cutora-text-input::placeholder {
+  color: var(--color-cutora-placeholder);
+  font-weight: 400;
+}
+
+.cutora-text-input:focus {
+  border-color: var(--color-cutora-amber);
+  box-shadow: 0 0 0 calc(3 * var(--cutora-u)) rgba(245, 154, 8, 0.16);
+}
+
+.cutora-input-password {
+  padding-right: calc(60 * var(--cutora-u));
+}
+
+/* Eye Toggle Button */
+.cutora-password-toggle-btn {
+  position: absolute;
+  right: calc(18 * var(--cutora-u));
+  top: 50%;
+  transform: translateY(-50%);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: var(--color-cutora-muted);
+  width: calc(34 * var(--cutora-u));
+  height: calc(34 * var(--cutora-u));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.2s ease;
+  padding: 0;
+}
+
+.cutora-password-toggle-btn:hover {
+  color: var(--color-cutora-ink);
+}
+
+.cutora-password-toggle-btn svg {
+  width: calc(22 * var(--cutora-u));
+  height: calc(22 * var(--cutora-u));
+  display: block;
+}
+
+/* Options Row: 26u checkbox on left, "Forgot Password?" in amber on right */
+.cutora-options-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: calc(20 * var(--cutora-u));
+  animation: cutoraFadeUp 0.75s cubic-bezier(0.16, 1, 0.3, 1) 0.75s backwards;
+}
+
+.cutora-remember-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: calc(11 * var(--cutora-u));
+  cursor: pointer;
+  user-select: none;
+}
+
+.cutora-remember-input {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+/* 26u custom checkbox: fills black with white tick */
+.cutora-custom-checkbox {
+  width: calc(26 * var(--cutora-u));
+  height: calc(26 * var(--cutora-u));
+  border-radius: calc(7 * var(--cutora-u));
+  border: calc(1.5 * var(--cutora-u)) solid var(--color-cutora-lines);
+  background-color: #FFFFFF;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.2s ease, border-color 0.2s ease;
+  flex-shrink: 0;
+}
+
+.cutora-custom-checkbox svg {
+  width: calc(16 * var(--cutora-u));
+  height: calc(16 * var(--cutora-u));
+  stroke: #FFFFFF;
+  stroke-width: 2.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  opacity: 0;
+  transform: scale(0.6);
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.cutora-remember-input:checked + .cutora-custom-checkbox {
+  background-color: var(--color-cutora-button);
+  border-color: var(--color-cutora-button);
+}
+
+.cutora-remember-input:checked + .cutora-custom-checkbox svg {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.cutora-remember-label {
+  font-size: calc(16.5 * var(--cutora-u));
+  font-weight: 480;
+  color: var(--color-cutora-secondary);
+}
+
+.cutora-forgot-link {
+  font-size: calc(16.5 * var(--cutora-u));
+  font-weight: 540;
+  color: var(--color-cutora-amber);
+  text-decoration: none;
+  transition: opacity 0.2s ease;
+}
+
+.cutora-forgot-link:hover {
+  opacity: 0.85;
+  text-decoration: underline;
+}
+
+/* Login Button: full-width 66u pill, black, with "Login" in amber, 38u below */
+.cutora-login-submit-btn {
+  width: 100%;
+  height: calc(66 * var(--cutora-u));
+  border-radius: calc(33 * var(--cutora-u));
+  background-color: var(--color-cutora-button);
+  color: var(--color-cutora-amber);
+  font-family: inherit;
+  font-size: calc(19 * var(--cutora-u));
+  font-weight: 650;
+  letter-spacing: calc(-0.2 * var(--cutora-u));
+  border: none;
+  cursor: pointer;
+  margin-top: calc(36 * var(--cutora-u));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.25s ease, box-shadow 0.25s ease, transform 0.2s ease;
+  animation: cutoraFadeUp 0.75s cubic-bezier(0.16, 1, 0.3, 1) 0.85s backwards;
+}
+
+/* Hover: deepens to black with soft shadow */
+.cutora-login-submit-btn:hover {
+  background-color: #000000;
+  box-shadow: 0 calc(12 * var(--cutora-u)) calc(30 * var(--cutora-u)) calc(-4 * var(--cutora-u)) rgba(0, 0, 0, 0.34);
+  transform: translateY(calc(-1 * var(--cutora-u)));
+}
+
+.cutora-login-submit-btn:active {
+  transform: translateY(0);
+  box-shadow: 0 calc(6 * var(--cutora-u)) calc(18 * var(--cutora-u)) rgba(0, 0, 0, 0.25);
+}
+
+.cutora-login-submit-btn:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* Divider: "Or continue with:" with hairlines either side */
+.cutora-divider-row {
+  display: flex;
+  align-items: center;
+  margin-top: calc(24 * var(--cutora-u));
+  margin-bottom: calc(24 * var(--cutora-u));
+  animation: cutoraFadeUp 0.75s cubic-bezier(0.16, 1, 0.3, 1) 0.95s backwards;
+}
+
+.cutora-divider-line {
+  flex: 1;
+  height: calc(1 * var(--cutora-u));
+  background-color: var(--color-cutora-lines);
+}
+
+.cutora-divider-text {
+  padding: 0 calc(16 * var(--cutora-u));
+  font-size: calc(15.5 * var(--cutora-u));
+  color: var(--color-cutora-muted);
+  font-weight: 450;
+  white-space: nowrap;
+}
+
+/* Google Button: 66u white pill with multicolour Google "G" and "Continue with Google" */
+.cutora-google-btn {
+  width: 100%;
+  height: calc(66 * var(--cutora-u));
+  border-radius: calc(33 * var(--cutora-u));
+  background-color: #FFFFFF;
+  border: calc(1 * var(--cutora-u)) solid var(--color-cutora-lines);
+  color: var(--color-cutora-button);
+  font-family: inherit;
+  font-size: calc(17.4 * var(--cutora-u));
+  font-weight: 560;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: calc(12 * var(--cutora-u));
+  transition: background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+  animation: cutoraFadeUp 0.75s cubic-bezier(0.16, 1, 0.3, 1) 1.05s backwards;
+}
+
+.cutora-google-btn:hover {
+  background-color: #FAFAFA;
+  border-color: #CBD5E1;
+  box-shadow: 0 calc(4 * var(--cutora-u)) calc(16 * var(--cutora-u)) rgba(0, 0, 0, 0.06);
+}
+
+.cutora-google-icon {
+  width: calc(22 * var(--cutora-u));
+  height: calc(22 * var(--cutora-u));
+  display: block;
+  flex-shrink: 0;
+}
+
+/* Footer Line: "Don’t have an account? Sign up here" with link in amber */
+.cutora-footer-row {
+  margin-top: calc(22 * var(--cutora-u));
+  text-align: center;
+  font-size: calc(16 * var(--cutora-u));
+  color: var(--color-cutora-secondary);
+  animation: cutoraFadeUp 0.75s cubic-bezier(0.16, 1, 0.3, 1) 1.15s backwards;
+}
+
+.cutora-signup-link {
+  color: var(--color-cutora-amber);
+  font-weight: 600;
+  text-decoration: none;
+  transition: opacity 0.2s ease;
+}
+
+.cutora-signup-link:hover {
+  opacity: 0.85;
+  text-decoration: underline;
+}
+
+/* --------------------------------------------------------------------------
+   KEYFRAME ANIMATIONS
+   -------------------------------------------------------------------------- */
+@keyframes cutoraFadeUp {
+  0% {
+    opacity: 0;
+    transform: translateY(calc(18 * var(--cutora-u)));
   }
-  50% {
-    transform: translateY(-8px) rotate(1.5deg);
+  100% {
+    opacity: 1;
+    transform: translateY(0);
   }
 }
 
-@keyframes marhasFloatReverse {
-  0%, 100% {
-    transform: translateY(0px) rotate(0deg);
+@keyframes cutoraCardSettle {
+  0% {
+    opacity: 0;
+    transform: translateY(calc(22 * var(--cutora-u))) scale(0.99);
   }
-  50% {
-    transform: translateY(7px) rotate(-1.5deg);
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
   }
 }
 
-.animate-marhas-float {
-  animation: marhasFloatSlow 5s ease-in-out infinite;
+@keyframes cutoraWipeUp {
+  0% {
+    transform: translateY(115%);
+  }
+  100% {
+    transform: translateY(0);
+  }
 }
 
-.animate-marhas-float-reverse {
-  animation: marhasFloatReverse 6s ease-in-out infinite;
+/* --------------------------------------------------------------------------
+   RESPONSIVE ADAPTATIONS: Tablet & Phone
+   -------------------------------------------------------------------------- */
+@media (max-width: 960px) and (orientation: portrait), (max-width: 768px) {
+  :root {
+    --cutora-u: max(0.62px, min(calc(100vw / 390), calc(100dvh / 844)));
+  }
+
+  .cutora-viewport {
+    flex-direction: column;
+    height: 100dvh;
+    overflow: hidden;
+  }
+
+  .cutora-hero-column {
+    flex: none;
+    height: auto;
+    padding-bottom: calc(12 * var(--cutora-u));
+  }
+
+  .cutora-hero-top-bar {
+    padding-top: calc(22 * var(--cutora-u));
+    padding-left: calc(22 * var(--cutora-u));
+    padding-right: calc(22 * var(--cutora-u));
+  }
+
+  .cutora-logo-tile {
+    width: calc(40 * var(--cutora-u));
+    height: calc(40 * var(--cutora-u));
+    border-radius: calc(10 * var(--cutora-u));
+  }
+
+  .cutora-brand-name {
+    font-size: calc(26 * var(--cutora-u));
+  }
+
+  .cutora-back-link {
+    font-size: calc(14 * var(--cutora-u));
+  }
+
+  .cutora-hero-pitch {
+    padding-top: calc(16 * var(--cutora-u));
+    padding-left: calc(22 * var(--cutora-u));
+    padding-right: calc(22 * var(--cutora-u));
+    padding-bottom: 0;
+  }
+
+  .cutora-headline-line {
+    font-size: calc(34 * var(--cutora-u));
+    line-height: calc(40 * var(--cutora-u));
+    letter-spacing: calc(-1.2 * var(--cutora-u));
+    white-space: normal;
+  }
+
+  .cutora-pitch-subline {
+    font-size: calc(14 * var(--cutora-u));
+    line-height: calc(19 * var(--cutora-u));
+    margin-top: calc(10 * var(--cutora-u));
+  }
+
+  .cutora-slider-dots {
+    margin-top: calc(14 * var(--cutora-u));
+  }
+
+  .cutora-card-panel {
+    width: calc(100% - calc(24 * var(--cutora-u)));
+    margin: calc(12 * var(--cutora-u)) auto calc(12 * var(--cutora-u)) auto;
+    height: auto;
+    flex: 1;
+    border-radius: calc(22 * var(--cutora-u));
+    padding: calc(24 * var(--cutora-u)) calc(24 * var(--cutora-u));
+    justify-content: center;
+  }
+
+  .cutora-card-inner-form {
+    width: 100%;
+  }
+
+  .cutora-form-heading {
+    font-size: calc(30 * var(--cutora-u));
+  }
+
+  .cutora-form-subline {
+    font-size: calc(14.5 * var(--cutora-u));
+    margin-bottom: calc(18 * var(--cutora-u));
+  }
+
+  .cutora-text-input, .cutora-login-submit-btn, .cutora-google-btn {
+    height: calc(54 * var(--cutora-u));
+  }
+
+  .cutora-login-submit-btn {
+    margin-top: calc(22 * var(--cutora-u));
+  }
+
+  .cutora-divider-row {
+    margin-top: calc(16 * var(--cutora-u));
+    margin-bottom: calc(16 * var(--cutora-u));
+  }
+
+  .cutora-footer-row {
+    margin-top: calc(16 * var(--cutora-u));
+  }
+}
+
+@media (max-height: 750px) and (orientation: portrait), (max-height: 640px) {
+  .cutora-pitch-subline {
+    display: none !important;
+  }
+  .cutora-slider-dots {
+    margin-top: calc(8 * var(--cutora-u));
+  }
+}
+
+@media (max-height: 520px) and (orientation: landscape) {
+  :root {
+    --cutora-u: max(0.62px, min(calc(100vw / 700), calc(100dvh / 390)));
+  }
+
+  .cutora-hero-top-bar {
+    padding-top: calc(20 * var(--cutora-u));
+    padding-left: calc(30 * var(--cutora-u));
+  }
+
+  .cutora-hero-pitch {
+    padding-left: calc(30 * var(--cutora-u));
+    padding-bottom: calc(24 * var(--cutora-u));
+  }
+
+  .cutora-headline-line {
+    font-size: calc(36 * var(--cutora-u));
+    line-height: calc(42 * var(--cutora-u));
+  }
+
+  .cutora-pitch-subline {
+    display: none;
+  }
+
+  .cutora-slider-dots {
+    margin-top: calc(14 * var(--cutora-u));
+  }
+
+  .cutora-card-panel {
+    width: calc(360 * var(--cutora-u));
+    margin: calc(10 * var(--cutora-u)) calc(12 * var(--cutora-u)) calc(10 * var(--cutora-u)) 0;
+    height: calc(100dvh - calc(20 * var(--cutora-u)));
+    padding-left: calc(28 * var(--cutora-u));
+    padding-right: calc(28 * var(--cutora-u));
+  }
+
+  .cutora-card-inner-form {
+    width: 100%;
+  }
+
+  .cutora-form-heading {
+    font-size: calc(28 * var(--cutora-u));
+  }
+
+  .cutora-form-subline {
+    font-size: calc(13 * var(--cutora-u));
+    margin-bottom: calc(14 * var(--cutora-u));
+  }
+
+  .cutora-text-input, .cutora-login-submit-btn, .cutora-google-btn {
+    height: calc(46 * var(--cutora-u));
+  }
+
+  .cutora-login-submit-btn {
+    margin-top: calc(16 * var(--cutora-u));
+  }
+
+  .cutora-divider-row {
+    margin-top: calc(12 * var(--cutora-u));
+    margin-bottom: calc(12 * var(--cutora-u));
+  }
+
+  .cutora-footer-row {
+    margin-top: calc(12 * var(--cutora-u));
+  }
+}
+
+/* --------------------------------------------------------------------------
+   DIRECTIONAL FLUID SLIDE & BLUR-DISSOLVE TRANSITIONS (No Center Pop)
+   -------------------------------------------------------------------------- */
+.cutora-slide-wrap {
+  position: relative;
+  width: 100%;
+}
+
+.cutora-slide-content {
+  transition: transform 0.28s cubic-bezier(0.16, 1, 0.3, 1),
+              opacity 0.22s cubic-bezier(0.16, 1, 0.3, 1),
+              filter 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+  will-change: transform, opacity, filter;
+}
+
+.cutora-slide-content.phase-idle {
+  transform: translateX(0);
+  opacity: 1;
+  filter: blur(0px);
+}
+
+.cutora-slide-content.phase-exiting-right {
+  transform: translateX(calc(-24 * var(--cutora-u)));
+  opacity: 0;
+  filter: blur(4px);
+}
+
+.cutora-slide-content.phase-exiting-left {
+  transform: translateX(calc(24 * var(--cutora-u)));
+  opacity: 0;
+  filter: blur(4px);
+}
+
+.cutora-slide-content.phase-entering-right {
+  transform: translateX(calc(24 * var(--cutora-u)));
+  opacity: 0;
+  filter: blur(4px);
+  transition: none !important;
+}
+
+.cutora-slide-content.phase-entering-left {
+  transform: translateX(calc(-24 * var(--cutora-u)));
+  opacity: 0;
+  filter: blur(4px);
+  transition: none !important;
+}
+
+/* Fluid Segmented Pill Nav */
+.cutora-segmented-nav {
+  display: inline-flex;
+  position: relative;
+  background-color: #f1f3f6;
+  border-radius: 9999px;
+  padding: calc(4 * var(--cutora-u));
+  margin-bottom: calc(24 * var(--cutora-u));
+  width: fit-content;
+  box-shadow: inset 0 calc(1 * var(--cutora-u)) calc(3 * var(--cutora-u)) rgba(0, 0, 0, 0.05);
+}
+
+.cutora-segmented-glider {
+  position: absolute;
+  top: calc(4 * var(--cutora-u));
+  bottom: calc(4 * var(--cutora-u));
+  border-radius: 9999px;
+  background-color: #FFFFFF;
+  box-shadow: 0 calc(2 * var(--cutora-u)) calc(8 * var(--cutora-u)) rgba(0, 0, 0, 0.08);
+  transition: transform 0.32s cubic-bezier(0.16, 1, 0.3, 1), width 0.32s cubic-bezier(0.16, 1, 0.3, 1);
+  pointer-events: none;
+}
+
+.cutora-segmented-btn {
+  position: relative;
+  z-index: 2;
+  padding: calc(8 * var(--cutora-u)) calc(20 * var(--cutora-u));
+  border-radius: 9999px;
+  font-size: calc(14 * var(--cutora-u));
+  font-weight: 600;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: calc(6 * var(--cutora-u));
+  transition: color 0.2s ease;
+  color: var(--color-cutora-secondary);
+  user-select: none;
+}
+
+.cutora-segmented-btn.active {
+  color: var(--color-cutora-ink);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+
+  .cutora-headline-line {
+    transform: none !important;
+  }
+
+  .cutora-motion-video {
+    display: none !important;
+  }
 }

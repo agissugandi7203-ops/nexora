@@ -8,7 +8,9 @@ import {
   ExternalLink,
   Check,
   ChevronRight,
-  X
+  X,
+  Search,
+  Download
 } from 'lucide-react';
 import { useAuth } from '../../../context/AuthContext';
 import { useData } from '../../../context/DataContext';
@@ -19,6 +21,8 @@ export const StudentMaterials: React.FC = () => {
   const { materials, subjects, markMaterialComplete, isMaterialCompleted } = useData();
 
   const [selectedSubjectFilter, setSelectedSubjectFilter] = useState('all');
+  const [filterScope, setFilterScope] = useState<'my_class' | 'all'>('my_class');
+  const [searchTerm, setSearchTerm] = useState('');
   const [activeMaterial, setActiveMaterial] = useState<LearningMaterial | null>(null);
   const [toastMsg, setToastMsg] = useState<string | null>(null);
 
@@ -40,6 +44,9 @@ export const StudentMaterials: React.FC = () => {
     }
   };
 
+  // Published materials (exclude explicit drafts)
+  const publishedMaterials = materials.filter(m => m.is_published !== false);
+
   const mySubjects = subjects.filter(sub => {
     if (!currentStudent?.class_id) return true;
     if (!sub.class_ids || sub.class_ids.length === 0) return true;
@@ -47,13 +54,42 @@ export const StudentMaterials: React.FC = () => {
   });
   const mySubjectIds = mySubjects.map(s => s.id);
 
-  const filtered = materials.filter(m => {
-    if (m.subject_id && !mySubjectIds.includes(m.subject_id)) return false;
-    if (currentStudent?.class_id && m.class_id && m.class_id !== currentStudent.class_id) {
-      return false;
-    }
-    if (!m.is_published) return false;
+  // Helper: check if a material is designated for this student's class
+  const isMaterialForStudentClass = (m: LearningMaterial): boolean => {
+    // If material has no class_id specified, it's open for all
+    if (!m.class_id) return true;
+    // If student has no class_id, show all
+    if (!currentStudent?.class_id) return true;
+    // Direct class match
+    if (m.class_id === currentStudent.class_id) return true;
+    // Or if the material belongs to a subject taken by the student
+    if (m.subject_id && mySubjectIds.includes(m.subject_id)) return true;
+    return false;
+  };
+
+  const myClassMaterials = publishedMaterials.filter(isMaterialForStudentClass);
+
+  // If user selected 'my_class' but none match strictly, fallback to all published so student is NEVER stranded
+  const activeScope = (filterScope === 'my_class' && myClassMaterials.length === 0 && publishedMaterials.length > 0)
+    ? 'all'
+    : filterScope;
+
+  const scopedMaterials = activeScope === 'my_class' ? myClassMaterials : publishedMaterials;
+
+  const filtered = scopedMaterials.filter(m => {
     if (selectedSubjectFilter !== 'all' && m.subject_id !== selectedSubjectFilter) return false;
+
+    const q = searchTerm.trim().toLowerCase();
+    if (q) {
+      const sub = subjects.find(s => s.id === m.subject_id);
+      const matchSearch =
+        m.title.toLowerCase().includes(q) ||
+        (m.description || '').toLowerCase().includes(q) ||
+        `bab ${m.order_index}`.toLowerCase().includes(q) ||
+        (sub?.name || '').toLowerCase().includes(q);
+      if (!matchSearch) return false;
+    }
+
     return true;
   });
 
@@ -84,25 +120,83 @@ export const StudentMaterials: React.FC = () => {
         </div>
       </div>
 
-      {/* Filter by Subject */}
-      <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-sm flex items-center gap-3">
-        <BookOpen className="w-4 h-4 text-slate-400" />
-        <span className="text-xs text-slate-500 font-medium">Filter Mata Pelajaran:</span>
-        <select
-          value={selectedSubjectFilter}
-          onChange={(e) => setSelectedSubjectFilter(e.target.value)}
-          className="px-3 py-1.5 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-800 focus:outline-none focus:border-[#3b5bf5]"
-        >
-          <option value="all">Semua Mata Pelajaran ({filtered.length})</option>
-          {mySubjects.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-        </select>
+      {/* Scope toggle: Kelas Saya vs Semua Modul */}
+      <div className="flex flex-wrap items-center justify-between gap-3 bg-white p-3 rounded-2xl border border-slate-200/80 shadow-xs">
+        <div className="flex items-center gap-2 text-xs">
+          <button
+            type="button"
+            onClick={() => setFilterScope('my_class')}
+            className={`px-3.5 py-1.5 rounded-xl font-bold transition-all ${
+              activeScope === 'my_class'
+                ? 'bg-slate-900 text-white shadow-xs'
+                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+            }`}
+          >
+            Modul Kelas Saya ({myClassMaterials.length})
+          </button>
+          <button
+            type="button"
+            onClick={() => setFilterScope('all')}
+            className={`px-3.5 py-1.5 rounded-xl font-bold transition-all ${
+              activeScope === 'all'
+                ? 'bg-slate-900 text-white shadow-xs'
+                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+            }`}
+          >
+            Semua Modul Sekolah ({publishedMaterials.length})
+          </button>
+        </div>
+        {filterScope === 'my_class' && myClassMaterials.length === 0 && publishedMaterials.length > 0 && (
+          <span className="text-[11px] font-semibold text-amber-800 bg-amber-50 px-3 py-1 rounded-xl border border-amber-200">
+            Menampilkan seluruh modul sekolah karena belum ada modul khusus untuk kelas Anda.
+          </span>
+        )}
+      </div>
+
+      {/* Search & Filter Bar */}
+      <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-sm flex flex-col sm:flex-row gap-3 items-center justify-between">
+        <div className="relative w-full sm:w-80">
+          <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+          <input
+            type="text"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            placeholder="Cari materi pembelajaran atau bab..."
+            className="w-full pl-10 pr-4 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:border-[#3b5bf5] focus:bg-white"
+          />
+        </div>
+
+        <div className="flex items-center gap-2 self-start sm:self-auto">
+          <BookOpen className="w-4 h-4 text-slate-400" />
+          <span className="text-xs text-slate-500 font-medium">Mapel:</span>
+          <select
+            value={selectedSubjectFilter}
+            onChange={(e) => setSelectedSubjectFilter(e.target.value)}
+            className="px-3 py-1.5 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-800 focus:outline-none focus:border-[#3b5bf5]"
+          >
+            <option value="all">Semua Mata Pelajaran ({filtered.length})</option>
+            {mySubjects.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+          </select>
+        </div>
       </div>
 
       {/* Materials List */}
       <div className="space-y-3.5">
         {filtered.length === 0 ? (
-          <div className="bg-white p-10 text-center rounded-3xl border border-slate-200/80 shadow-sm text-slate-400 text-xs">
-            Belum ada materi pembelajaran yang tersedia untuk filter ini.
+          <div className="bg-white p-10 text-center rounded-3xl border border-slate-200/80 shadow-sm text-slate-400 text-xs space-y-2">
+            <BookOpen className="w-8 h-8 text-slate-300 mx-auto" />
+            <p className="font-semibold text-slate-700">
+              {searchTerm ? `Tidak ditemukan materi yang cocok dengan "${searchTerm}"` : 'Belum ada materi pembelajaran yang tersedia.'}
+            </p>
+            {searchTerm && (
+              <button
+                type="button"
+                onClick={() => setSearchTerm('')}
+                className="mt-2 px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition-all"
+              >
+                Reset Pencarian
+              </button>
+            )}
           </div>
         ) : (
           filtered.map((mat) => {
@@ -130,7 +224,10 @@ export const StudentMaterials: React.FC = () => {
                   </button>
 
                   <div>
-                    <div className="flex items-center gap-2 mb-1">
+                    <div className="flex flex-wrap items-center gap-2 mb-1">
+                      <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-slate-900 text-white">
+                        Bab {mat.order_index}
+                      </span>
                       <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-700">
                         {subject?.name || 'Umum'}
                       </span>
@@ -147,7 +244,35 @@ export const StudentMaterials: React.FC = () => {
                   </div>
                 </div>
 
-                <div className="flex items-center gap-3 self-end md:self-auto shrink-0">
+                <div className="flex flex-wrap items-center gap-2 self-end md:self-auto shrink-0">
+                  {/* Direct PDF Download / Open Button for Students */}
+                  {mat.pdf_url && (
+                    <a
+                      href={mat.pdf_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="px-3.5 py-2 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200/90 text-xs font-bold transition-all flex items-center gap-1.5 shadow-xs group/pdf"
+                      title="Buka / unduh materi dalam format PDF langsung"
+                    >
+                      <FileText className="w-3.5 h-3.5 text-rose-600" />
+                      <span>Buka PDF</span>
+                      <ExternalLink className="w-3 h-3 text-rose-500 group-hover/pdf:translate-x-0.5 transition-transform" />
+                    </a>
+                  )}
+
+                  {mat.video_url && (
+                    <a
+                      href={mat.video_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="px-3.5 py-2 rounded-xl bg-purple-50 hover:bg-purple-100 text-purple-700 border border-purple-200 text-xs font-bold transition-all flex items-center gap-1.5"
+                      title="Tonton video pembelajaran"
+                    >
+                      <Video className="w-3.5 h-3.5 text-purple-600" />
+                      <span>Video</span>
+                    </a>
+                  )}
+
                   <button
                     onClick={() => setActiveMaterial(mat)}
                     className="px-4 py-2 rounded-xl bg-[#3b5bf5] hover:bg-blue-600 text-white font-semibold text-xs shadow-md shadow-blue-500/20 transition-all flex items-center gap-1.5"

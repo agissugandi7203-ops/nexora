@@ -1,0 +1,45 @@
+# Vercel Ignore File
+# Mencegah file sensitif dan artefak lokal terunggah ke Vercel
+
+# Environment variables (Wajib diisi lewat Vercel Dashboard, bukan via file)
+.env
+.env.*
+!.env.example
+
+# Git metadata
+.git
+.github
+
+# Supabase migrations & schema lokal (jangan sampai bocor struktur DB mentah)
+supabase/
+
+# Folder duplikat atau backup
+nexora-lms/
+
+# Build & dependencies lokal
+node_modules
+dist
+dist-ssr
+
+# Mockup & Dokumentasi internal
+login.html
+README.md
+*.md
+
+# Editor & IDE
+.vscode
+.idea
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Log & Sistem operasi
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+.DS_Store
+Thumbs.db

@@ -17,9 +17,11 @@ import {
   School,
   ChevronDown,
   ChevronUp,
+  Search,
 } from 'lucide-react';
 import { useData } from '../../../context/DataContext';
 import { Assignment, AssignmentType } from '../../../types/database.types';
+import { ConfirmDialog } from '../../../components/ui/ConfirmDialog';
 
 export const AdminAssignments: React.FC = () => {
   const { assignments, subjects, classes, questions, addAssignment, updateAssignment, deleteAssignment } = useData();
@@ -27,6 +29,11 @@ export const AdminAssignments: React.FC = () => {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [editingAssignment, setEditingAssignment] = useState<Assignment | null>(null);
   const [notification, setNotification] = useState<string | null>(null);
+  const [asgToDelete, setAsgToDelete] = useState<Assignment | null>(null);
+  const [showZeroQuestionConfirm, setShowZeroQuestionConfirm] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedSubjectFilter, setSelectedSubjectFilter] = useState('all');
+  const [selectedTypeFilter, setSelectedTypeFilter] = useState('all');
   const [showManualQuestionListAdd, setShowManualQuestionListAdd] = useState(false);
   const [showManualQuestionListEdit, setShowManualQuestionListEdit] = useState(false);
 
@@ -107,26 +114,7 @@ export const AdminAssignments: React.FC = () => {
     setIsAddModalOpen(true);
   };
 
-  const handleCreate = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!formData.title.trim()) {
-      alert('Judul tugas/ujian wajib diisi!');
-      return;
-    }
-    if (!formData.subject_id) {
-      alert('Silakan pilih mata pelajaran!');
-      return;
-    }
-    if (!formData.class_ids || formData.class_ids.length === 0) {
-      alert('Silakan pilih minimal 1 kelas target (atau pilih Semua Kelas Mapel Ini)!');
-      return;
-    }
-
-    if (formData.type === 'quiz' && formData.selectedQuestions.length === 0) {
-      const confirmZero = confirm('Anda belum memilih paket/butir soal dari Bank Soal untuk kuis ini. Tetap ingin menerbitkan tanpa butir soal?');
-      if (!confirmZero) return;
-    }
-
+  const executeCreate = async () => {
     // Gunakan kelas pertama sebagai class_id utama untuk memenuhi constraint NOT NULL di PostgreSQL,
     // sementara daftar lengkap multi-kelas disimpan di class_ids
     const primaryClassId = formData.class_ids[0] || formData.class_id || classes[0]?.id || '';
@@ -154,7 +142,31 @@ export const AdminAssignments: React.FC = () => {
     }
 
     setIsAddModalOpen(false);
+    setShowZeroQuestionConfirm(false);
     showNotif('Tugas / Ujian baru berhasil dibuat dan diterbitkan!');
+  };
+
+  const handleCreate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!formData.title.trim()) {
+      alert('Judul tugas/ujian wajib diisi!');
+      return;
+    }
+    if (!formData.subject_id) {
+      alert('Silakan pilih mata pelajaran!');
+      return;
+    }
+    if (!formData.class_ids || formData.class_ids.length === 0) {
+      alert('Silakan pilih minimal 1 kelas target (atau pilih Semua Kelas Mapel Ini)!');
+      return;
+    }
+
+    if (formData.type === 'quiz' && formData.selectedQuestions.length === 0) {
+      setShowZeroQuestionConfirm(true);
+      return;
+    }
+
+    await executeCreate();
   };
 
   const handleOpenEditModal = (asg: Assignment) => {
@@ -214,15 +226,15 @@ export const AdminAssignments: React.FC = () => {
     showNotif('Tugas / ujian berhasil diperbarui!');
   };
 
-  const handleDelete = async (id: string) => {
-    if (confirm('Hapus tugas/ujian ini? Seluruh data pengumpulan siswa akan ikut terhapus.')) {
-      const res = await deleteAssignment(id);
-      if (res && !res.success) {
-        alert('Gagal menghapus tugas/ujian: ' + (res.error || 'Terjadi kesalahan pada database'));
-        return;
-      }
-      showNotif('Tugas / ujian berhasil dihapus.');
+  const handleConfirmDelete = async () => {
+    if (!asgToDelete) return;
+    const res = await deleteAssignment(asgToDelete.id);
+    if (res && !res.success) {
+      showNotif('Gagal menghapus tugas/ujian: ' + (res.error || 'Terjadi kesalahan pada database'));
+    } else {
+      showNotif(`Tugas / Ujian "${asgToDelete.title}" berhasil dihapus.`);
     }
+    setAsgToDelete(null);
   };
 
   const handleToggleActive = async (asg: Assignment) => {
@@ -234,6 +246,28 @@ export const AdminAssignments: React.FC = () => {
     }
     showNotif(`Status "${asg.title}" diubah menjadi ${nextStatus ? 'Aktif' : 'Terkunci / Nonaktif'}`);
   };
+
+  const filteredAssignments = assignments.filter((asg) => {
+    const matchSubject = selectedSubjectFilter === 'all' || asg.subject_id === selectedSubjectFilter;
+    const matchType = selectedTypeFilter === 'all' || asg.type === selectedTypeFilter;
+    const q = searchTerm.trim().toLowerCase();
+    if (!q) return matchSubject && matchType;
+
+    const subject = subjects.find(s => s.id === asg.subject_id);
+    const targetClassObjects = Array.isArray(asg.class_ids) && asg.class_ids.length > 0
+      ? classes.filter(c => asg.class_ids!.includes(c.id))
+      : (asg.class_id ? classes.filter(c => c.id === asg.class_id) : []);
+    const classNames = targetClassObjects.map(c => c.name).join(' ').toLowerCase();
+
+    const matchSearch =
+      asg.title.toLowerCase().includes(q) ||
+      (asg.description || '').toLowerCase().includes(q) ||
+      (asg.category_name || '').toLowerCase().includes(q) ||
+      (subject?.name || '').toLowerCase().includes(q) ||
+      classNames.includes(q);
+
+    return matchSubject && matchType && matchSearch;
+  });
 
   return (
     <div className="space-y-6">
@@ -263,9 +297,71 @@ export const AdminAssignments: React.FC = () => {
         </button>
       </div>
 
+      {/* Search and Filter Bar */}
+      <div className="bg-white p-4 rounded-3xl border border-slate-200/80 shadow-sm flex flex-col sm:flex-row gap-3 items-center justify-between">
+        <div className="relative w-full sm:w-80">
+          <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+          <input
+            type="text"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            placeholder="Cari tugas, kuis, mapel, atau kelas..."
+            className="w-full pl-10 pr-4 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:border-[#3b5bf5] focus:bg-white"
+          />
+        </div>
+
+        <div className="flex flex-wrap items-center gap-3 self-start sm:self-auto">
+          <div className="flex items-center gap-1.5">
+            <span className="text-xs text-slate-500 font-bold">Mapel:</span>
+            <select
+              value={selectedSubjectFilter}
+              onChange={(e) => setSelectedSubjectFilter(e.target.value)}
+              className="px-3 py-1.5 rounded-xl bg-slate-50 border border-slate-200 text-xs font-semibold text-slate-700 focus:outline-none focus:border-[#3b5bf5] focus:bg-white"
+            >
+              <option value="all">Semua Mapel</option>
+              {subjects.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+            </select>
+          </div>
+
+          <div className="flex items-center gap-1.5">
+            <span className="text-xs text-slate-500 font-bold">Tipe:</span>
+            <select
+              value={selectedTypeFilter}
+              onChange={(e) => setSelectedTypeFilter(e.target.value)}
+              className="px-3 py-1.5 rounded-xl bg-slate-50 border border-slate-200 text-xs font-semibold text-slate-700 focus:outline-none focus:border-[#3b5bf5] focus:bg-white"
+            >
+              <option value="all">Semua Tipe ({assignments.length})</option>
+              <option value="quiz">Kuis Online</option>
+              <option value="file_upload">Tugas File</option>
+              <option value="text">Tugas Teks</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
       {/* Assignments List */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {assignments.map((asg) => {
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {filteredAssignments.length === 0 ? (
+          <div className="col-span-full py-12 text-center bg-white rounded-3xl border border-slate-200/80 p-8 space-y-3">
+            <ClipboardList className="w-10 h-10 text-slate-300 mx-auto" />
+            <h4 className="text-sm font-bold text-slate-800">
+              {searchTerm ? `Tidak ditemukan tugas atau kuis yang cocok dengan "${searchTerm}"` : 'Belum ada tugas atau ujian'}
+            </h4>
+            <p className="text-xs text-slate-400 max-w-sm mx-auto">
+              {searchTerm ? 'Coba periksa kata kunci Anda atau klik tombol di bawah untuk menyetel ulang.' : 'Klik "Buat Tugas / Ujian Baru" untuk mulai mempublikasikan tugas ke kelas.'}
+            </p>
+            {searchTerm && (
+              <button
+                type="button"
+                onClick={() => setSearchTerm('')}
+                className="mt-2 px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition-all"
+              >
+                Reset Pencarian
+              </button>
+            )}
+          </div>
+        ) : (
+          filteredAssignments.map((asg) => {
           const subject = subjects.find(s => s.id === asg.subject_id);
           const linkedForSub = getLinkedClassesForSubject(asg.subject_id);
           const targetClassObjects = Array.isArray(asg.class_ids) && asg.class_ids.length > 0
@@ -278,85 +374,110 @@ export const AdminAssignments: React.FC = () => {
           return (
             <div
               key={asg.id}
-              className="bg-white rounded-3xl p-6 border border-slate-200/80 shadow-sm flex flex-col justify-between group hover:border-[#3b5bf5]/40 hover:shadow-md transition-all"
+              className="bg-white rounded-3xl p-6 border border-slate-200/90 shadow-sm flex flex-col justify-between group hover:border-[#3b5bf5]/40 hover:shadow-md transition-all"
             >
               <div>
-                <div className="flex items-center justify-between mb-3">
-                  <div className="flex flex-wrap items-center gap-2">
+                {/* Header: Badges & Actions */}
+                <div className="flex items-center justify-between gap-2 mb-3.5">
+                  <div className="flex items-center gap-2">
                     <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold ${
                       asg.type === 'quiz'
-                        ? 'bg-blue-50 text-[#3b5bf5]'
-                        : 'bg-emerald-50 text-[#0fa868]'
+                        ? 'bg-blue-50 text-[#3b5bf5] border border-blue-200/60'
+                        : 'bg-emerald-50 text-[#0fa868] border border-emerald-200/60'
                     }`}>
-                      {asg.type === 'quiz' ? 'Kuis Interaktif' : 'Pengumpulan Tugas'}
+                      {asg.type === 'quiz' ? 'Kuis Interaktif' : 'Portofolio / Tugas'}
                     </span>
-                    {asg.category_name && (
-                      <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-200/60">
-                        Paket: {asg.category_name}
-                      </span>
-                    )}
                     <button
+                      type="button"
                       onClick={() => handleToggleActive(asg)}
-                      className={`text-[10px] px-2.5 py-1 rounded-full font-bold border transition-colors ${
+                      className={`text-[10px] px-2.5 py-0.5 rounded-full font-bold border transition-colors ${
                         asg.is_active
                           ? 'bg-[#1cd485]/15 text-[#0fa868] border-emerald-200'
                           : 'bg-slate-100 text-slate-500 border-slate-200'
                       }`}
+                      title="Klik untuk mengubah status aktif"
                     >
-                      {asg.is_active ? '● Aktif' : '○ Terkunci'}
+                      {asg.is_active ? '● Aktif' : '○ Kunci'}
                     </button>
                   </div>
 
-                  <div className="flex items-center gap-1.5">
+                  <div className="flex items-center gap-1">
                     <button
                       onClick={() => handleOpenEditModal(asg)}
-                      className="p-2 rounded-xl bg-slate-100 hover:bg-blue-50 text-slate-600 hover:text-[#3b5bf5] transition-colors"
+                      className="p-1.5 rounded-xl bg-slate-100 hover:bg-blue-50 text-slate-600 hover:text-[#3b5bf5] transition-colors"
                       title="Edit Tugas / Ujian"
                     >
                       <Edit2 className="w-3.5 h-3.5" />
                     </button>
                     <button
-                      onClick={() => handleDelete(asg.id)}
-                      className="p-2 rounded-xl bg-slate-100 hover:bg-rose-50 text-slate-600 hover:text-rose-600 transition-colors"
-                      title="Hapus"
+                      onClick={() => setAsgToDelete(asg)}
+                      className="p-1.5 rounded-xl bg-slate-100 hover:bg-rose-50 text-slate-600 hover:text-rose-600 transition-colors"
+                      title="Hapus Tugas"
                     >
                       <Trash2 className="w-3.5 h-3.5" />
                     </button>
                   </div>
                 </div>
 
-                <h4 className="text-base font-extrabold text-slate-900 mb-1.5">{asg.title}</h4>
-                <p className="text-xs text-slate-500 line-clamp-2 mb-4 font-medium">
-                  {asg.description || 'Tidak ada deskripsi.'}
+                {/* Subject & Target Class */}
+                <div className="flex flex-wrap items-center gap-1.5 text-xs text-slate-500 font-medium mb-2">
+                  <span className="font-bold text-[#3b5bf5]">{subject?.name || 'Mata Pelajaran'}</span>
+                  <span>&bull;</span>
+                  <span className="bg-slate-100 px-2 py-0.5 rounded-md text-[11px] text-slate-700 font-semibold truncate max-w-[180px]">
+                    {classDisplayLabel}
+                  </span>
+                  {asg.category_name && (
+                    <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-200/60">
+                      {asg.category_name}
+                    </span>
+                  )}
+                </div>
+
+                {/* Title & Description */}
+                <h4 className="text-base font-bold text-slate-900 group-hover:text-[#3b5bf5] transition-colors mb-2 leading-snug">
+                  {asg.title}
+                </h4>
+                <p className="text-xs text-slate-500 line-clamp-2 leading-relaxed mb-4 font-normal">
+                  {asg.description || 'Tidak ada deskripsi khusus.'}
                 </p>
 
-                <div className="grid grid-cols-2 gap-2 text-xs text-slate-700 py-3 border-y border-slate-100">
+                {/* Key Metrics Strip */}
+                <div className="p-3 rounded-2xl bg-slate-50 border border-slate-200/80 grid grid-cols-3 gap-2 text-center text-xs mb-4">
                   <div>
-                    <span className="text-slate-400 block text-[10px] font-medium">Mapel & Kelas Diizinkan</span>
-                    <span className="font-bold text-slate-900">{subject?.name} &bull; {classDisplayLabel}</span>
+                    <span className="text-[10px] text-slate-400 block font-medium">Durasi</span>
+                    <span className="font-bold text-slate-800 text-[11px]">
+                      {asg.duration_minutes ? `${asg.duration_minutes} Menit` : 'Tanpa Timer'}
+                    </span>
+                  </div>
+                  <div className="border-x border-slate-200">
+                    <span className="text-[10px] text-slate-400 block font-medium">Bobot</span>
+                    <span className="font-bold text-slate-800 text-[11px]">{asg.total_points} Poin</span>
                   </div>
                   <div>
-                    <span className="text-slate-400 block text-[10px] font-medium">Durasi & Bobot</span>
-                    <span className="font-bold text-slate-900">
-                      {asg.duration_minutes ? `${asg.duration_minutes} Menit` : 'Tanpa Timer'} &bull; {asg.total_points} Poin
+                    <span className="text-[10px] text-slate-400 block font-medium">Kapasitas</span>
+                    <span className="font-bold text-[#3b5bf5] text-[11px]">
+                      {asg.type === 'quiz' ? `${asg.question_count || questions.length} Butir` : 'Upload File'}
                     </span>
                   </div>
                 </div>
               </div>
 
-              <div className="pt-4 flex items-center justify-between text-xs text-slate-500">
-                <span className="flex items-center gap-1.5 text-[11px] font-semibold text-[#3b5bf5]">
-                  <HelpCircle className="w-3.5 h-3.5" />
-                  {asg.type === 'quiz' ? `${asg.question_count || questions.length} Butir Soal` : 'Upload File / Catatan'}
+              {/* Card Footer */}
+              <div className="pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-400">
+                <span className="text-[11px] font-medium text-slate-500">
+                  Tenggat: 7 hari lagi
                 </span>
-
-                <span className="text-slate-400 text-[10px] font-medium">
-                  Batas: 7 Hari ke depan
-                </span>
+                <button
+                  type="button"
+                  onClick={() => handleOpenEditModal(asg)}
+                  className="text-xs font-bold text-[#3b5bf5] hover:underline"
+                >
+                  Kelola Soal &rarr;
+                </button>
               </div>
             </div>
           );
-        })}
+        }))}
       </div>
 
       {/* Modal: Tambah Tugas / Ujian */}
@@ -1067,6 +1188,31 @@ export const AdminAssignments: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* Confirmation Dialog: Terbitkan Kuis Tanpa Soal */}
+      <ConfirmDialog
+        isOpen={showZeroQuestionConfirm}
+        onClose={() => setShowZeroQuestionConfirm(false)}
+        onConfirm={executeCreate}
+        title="Terbitkan Kuis Tanpa Butir Soal?"
+        description="Anda belum memilih paket atau butir soal dari Bank Soal untuk kuis ini. Apakah Anda yakin ingin tetap menerbitkan kuis ini sekarang?"
+        confirmLabel="Ya, Tetap Terbitkan"
+        cancelLabel="Batal & Pilih Soal"
+        variant="warning"
+      />
+
+      {/* Confirmation Dialog: Hapus Tugas / Ujian */}
+      <ConfirmDialog
+        isOpen={Boolean(asgToDelete)}
+        onClose={() => setAsgToDelete(null)}
+        onConfirm={handleConfirmDelete}
+        title={`Yakin Ingin Menghapus "${asgToDelete?.title || 'Tugas ini'}"?`}
+        description="Tugas/ujian ini beserta seluruh riwayat pengumpulan siswa akan dihapus dari sistem."
+        confirmLabel="Ya, Hapus Tugas"
+        cancelLabel="Batal"
+        variant="danger"
+        icon="trash"
+      />
     </div>
   );
 };

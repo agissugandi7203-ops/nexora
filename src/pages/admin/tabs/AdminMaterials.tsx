@@ -12,10 +12,13 @@ import {
   Video,
   Image as ImageIcon,
   ExternalLink,
-  Eye
+  Eye,
+  Search,
+  Download,
 } from 'lucide-react';
 import { useData } from '../../../context/DataContext';
 import { LearningMaterial } from '../../../types/database.types';
+import { ConfirmDialog } from '../../../components/ui/ConfirmDialog';
 
 export const AdminMaterials: React.FC = () => {
   const { materials, subjects, classes, addMaterial, updateMaterial, deleteMaterial } = useData();
@@ -25,6 +28,8 @@ export const AdminMaterials: React.FC = () => {
   const [viewingMaterial, setViewingMaterial] = useState<LearningMaterial | null>(null);
   const [selectedSubjectFilter, setSelectedSubjectFilter] = useState('all');
   const [notification, setNotification] = useState<string | null>(null);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [matToDelete, setMatToDelete] = useState<LearningMaterial | null>(null);
 
   // Helper: Ambil daftar kelas yang telah dicentang (class_ids) pada Mata Pelajaran tertentu
   const getLinkedClassesForSubject = (subjectId: string) => {
@@ -177,20 +182,30 @@ export const AdminMaterials: React.FC = () => {
     showNotif('Materi pembelajaran berhasil diperbarui!');
   };
 
-  const handleDelete = async (id: string) => {
-    if (confirm('Hapus materi pembelajaran ini?')) {
-      const res = await deleteMaterial(id);
-      if (res && !res.success) {
-        alert('Gagal menghapus materi: ' + (res.error || 'Terjadi kesalahan pada database'));
-        return;
-      }
-      showNotif('Materi berhasil dihapus.');
+  const handleConfirmDelete = async () => {
+    if (!matToDelete) return;
+    const res = await deleteMaterial(matToDelete.id);
+    if (res && !res.success) {
+      showNotif('Gagal menghapus materi: ' + (res.error || 'Terjadi kesalahan pada database'));
+    } else {
+      showNotif(`Materi "${matToDelete.title}" berhasil dihapus.`);
     }
+    setMatToDelete(null);
   };
 
   const filteredMaterials = materials.filter(m => {
-    if (selectedSubjectFilter === 'all') return true;
-    return m.subject_id === selectedSubjectFilter;
+    const q = searchTerm.trim().toLowerCase();
+    const matchSubject = selectedSubjectFilter === 'all' || m.subject_id === selectedSubjectFilter;
+    if (!q) return matchSubject;
+    const sub = subjects.find(s => s.id === m.subject_id);
+    const cls = classes.find(c => c.id === m.class_id);
+    const matchSearch =
+      m.title.toLowerCase().includes(q) ||
+      (m.description || '').toLowerCase().includes(q) ||
+      `bab ${m.order_index}`.toLowerCase().includes(q) ||
+      (sub?.name || '').toLowerCase().includes(q) ||
+      (cls?.name || '').toLowerCase().includes(q);
+    return matchSubject && matchSearch;
   });
 
   return (
@@ -208,7 +223,7 @@ export const AdminMaterials: React.FC = () => {
         <div>
           <h3 className="text-xl font-extrabold text-slate-900">Materi Pembelajaran Digital</h3>
           <p className="text-xs text-slate-500 font-medium">
-            Kelola bab pelajaran, modul rich text, link video, dan dokumen lampiran PDF
+            Kelola bab pelajaran, modul materi, link video, dan dokumen lampiran PDF
           </p>
         </div>
 
@@ -221,108 +236,193 @@ export const AdminMaterials: React.FC = () => {
         </button>
       </div>
 
-      {/* Filter by Subject */}
-      <div className="bg-white p-4 rounded-3xl border border-slate-200/80 shadow-sm flex items-center gap-3">
-        <BookOpen className="w-4 h-4 text-slate-400" />
-        <span className="text-xs text-slate-500 font-bold">Filter Mata Pelajaran:</span>
-        <select
-          value={selectedSubjectFilter}
-          onChange={(e) => setSelectedSubjectFilter(e.target.value)}
-          className="px-3.5 py-1.5 rounded-xl bg-slate-50 border border-slate-200 text-xs font-semibold text-slate-700 focus:outline-none focus:border-[#3b5bf5] focus:bg-white"
-        >
-          <option value="all">Semua Mata Pelajaran ({materials.length})</option>
-          {subjects.map((s) => (
-            <option key={s.id} value={s.id}>{s.name}</option>
-          ))}
-        </select>
+      {/* Search & Filter Bar */}
+      <div className="bg-white p-4 rounded-3xl border border-slate-200/80 shadow-sm flex flex-col sm:flex-row gap-3 items-center justify-between">
+        <div className="relative w-full sm:w-80">
+          <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+          <input
+            type="text"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            placeholder="Cari materi pembelajaran..."
+            className="w-full pl-10 pr-4 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:border-[#3b5bf5] focus:bg-white"
+          />
+        </div>
+
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-slate-500 font-bold">Mata Pelajaran:</span>
+          <select
+            value={selectedSubjectFilter}
+            onChange={(e) => setSelectedSubjectFilter(e.target.value)}
+            className="px-3.5 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs font-semibold text-slate-700 focus:outline-none focus:border-[#3b5bf5] focus:bg-white"
+          >
+            <option value="all">Semua Mapel ({materials.length})</option>
+            {subjects.map((s) => (
+              <option key={s.id} value={s.id}>{s.name}</option>
+            ))}
+          </select>
+        </div>
       </div>
 
-      {/* Materials List */}
-      <div className="space-y-4">
-        {filteredMaterials.map((mat) => {
-          const subject = subjects.find(s => s.id === mat.subject_id);
-          const cls = classes.find(c => c.id === mat.class_id);
-          const subjectLinkedClasses = getLinkedClassesForSubject(mat.subject_id);
-          const targetClassLabel = cls
-            ? cls.name
-            : subjectLinkedClasses.length > 0 && subject?.class_ids && subject.class_ids.length > 0
-              ? `Kelas Mapel: ${subjectLinkedClasses.map(c => c.name).join(', ')}`
-              : 'Semua Kelas';
+      {/* Materials Grid (Card Layout with clear visual hierarchy) */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {filteredMaterials.length === 0 ? (
+          <div className="col-span-full py-12 text-center bg-white rounded-3xl border border-slate-200/80 p-8 space-y-3">
+            <BookOpen className="w-10 h-10 text-slate-300 mx-auto" />
+            <h4 className="text-sm font-bold text-slate-800">
+              {searchTerm ? `Tidak ada materi yang cocok dengan "${searchTerm}"` : 'Tidak ada materi pembelajaran'}
+            </h4>
+            <p className="text-xs text-slate-400 max-w-sm mx-auto">
+              {searchTerm ? 'Coba periksa kata kunci Anda atau bersihkan pencarian.' : 'Coba sesuaikan filter mata pelajaran atau tambahkan materi baru.'}
+            </p>
+            {searchTerm && (
+              <button
+                type="button"
+                onClick={() => setSearchTerm('')}
+                className="mt-2 px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition-all"
+              >
+                Reset Pencarian
+              </button>
+            )}
+          </div>
+        ) : (
+          filteredMaterials.map((mat) => {
+            const subject = subjects.find(s => s.id === mat.subject_id);
+            const cls = classes.find(c => c.id === mat.class_id);
+            const subjectLinkedClasses = getLinkedClassesForSubject(mat.subject_id);
+            const targetClassLabel = cls
+              ? cls.name
+              : subjectLinkedClasses.length > 0 && subject?.class_ids && subject.class_ids.length > 0
+                ? subjectLinkedClasses.map(c => c.name).join(', ')
+                : 'Semua Kelas';
 
-          return (
-            <div
-              key={mat.id}
-              className="bg-white rounded-3xl p-6 border border-slate-200/80 shadow-sm flex flex-col md:flex-row items-start md:items-center justify-between gap-4 group hover:border-[#3b5bf5]/40 hover:shadow-md transition-all"
-            >
-              <div className="flex items-start gap-4">
-                <div className="w-12 h-12 rounded-2xl bg-blue-50 text-[#3b5bf5] flex items-center justify-center font-extrabold text-sm shrink-0">
-                  #{mat.order_index}
-                </div>
+            return (
+              <div
+                key={mat.id}
+                className="bg-white rounded-3xl p-6 border border-slate-200/90 shadow-sm flex flex-col justify-between group hover:border-[#3b5bf5]/40 hover:shadow-md transition-all"
+              >
                 <div>
-                  <div className="flex flex-wrap items-center gap-2 mb-1.5">
-                    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-blue-50 text-[#3b5bf5]">
-                      {subject?.name || 'Mata Pelajaran'}
+                  {/* Top Row: Order Badge & Status */}
+                  <div className="flex items-center justify-between mb-3.5">
+                    <span className="px-2.5 py-1 rounded-xl bg-slate-900 text-white font-extrabold text-xs shadow-xs">
+                      Bab {mat.order_index}
                     </span>
-                    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-slate-100 text-slate-700 flex items-center gap-1">
-                      <School className="w-3 h-3 text-slate-500" />
+
+                    <div className="flex items-center gap-1.5">
+                      {mat.is_published ? (
+                        <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200/80">
+                          Tayang
+                        </span>
+                      ) : (
+                        <span className="px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-slate-100 text-slate-500 border border-slate-200">
+                          Draft
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Subject & Class Tag */}
+                  <div className="flex flex-wrap items-center gap-1.5 text-xs text-slate-500 font-medium mb-2">
+                    <span className="font-bold text-[#3b5bf5]">{subject?.name || 'Mata Pelajaran'}</span>
+                    <span>&bull;</span>
+                    <span className="bg-slate-100 px-2 py-0.5 rounded-md text-[11px] text-slate-700 font-semibold truncate max-w-[170px]">
                       {targetClassLabel}
                     </span>
-                    {mat.is_published ? (
-                      <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-[#1cd485]/15 text-[#0fa868]">
-                        Tayang
-                      </span>
-                    ) : (
-                      <span className="px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-slate-100 text-slate-500">
-                        Draft
-                      </span>
-                    )}
                   </div>
-                  <h4 className="text-base font-extrabold text-slate-900">{mat.title}</h4>
-                  <p className="text-xs text-slate-500 mt-1 line-clamp-1 max-w-2xl font-medium">
-                    {mat.description}
+
+                  {/* Title & Description */}
+                  <h4 className="text-base font-bold text-slate-900 group-hover:text-[#3b5bf5] transition-colors mb-2 leading-snug line-clamp-2">
+                    {mat.title}
+                  </h4>
+                  <p className="text-xs text-slate-500 line-clamp-2 leading-relaxed mb-4 font-normal">
+                    {mat.description || 'Tidak ada deskripsi pengantar.'}
                   </p>
 
-                  <div className="flex items-center gap-3 mt-2 text-[11px] text-slate-500">
+                  {/* Prominent Direct PDF / Video Download Section */}
+                  <div className="space-y-2 mb-4">
                     {mat.pdf_url && (
-                      <span className="flex items-center gap-1 text-sky-600 font-semibold">
-                        <FileText className="w-3.5 h-3.5" /> Ada Modul PDF
-                      </span>
+                      <a
+                        href={mat.pdf_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="w-full py-2.5 px-3.5 rounded-2xl bg-rose-50 hover:bg-rose-100/90 text-rose-800 border border-rose-200/80 text-xs font-bold transition-all flex items-center justify-between shadow-xs group/pdf"
+                        title="Buka atau unduh file PDF modul ini secara langsung"
+                      >
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <div className="w-7 h-7 rounded-xl bg-rose-500 text-white flex items-center justify-center shrink-0 shadow-xs">
+                            <FileText className="w-4 h-4" />
+                          </div>
+                          <div className="text-left truncate">
+                            <span className="block text-xs font-extrabold text-rose-900 truncate">Dokumen Modul PDF</span>
+                            <span className="block text-[10px] text-rose-600 font-medium">Buka / Unduh Langsung</span>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-1 text-[11px] font-bold text-rose-700 bg-white/80 px-2.5 py-1 rounded-lg border border-rose-200 group-hover/pdf:bg-white transition-colors shrink-0">
+                          <span>Buka</span>
+                          <ExternalLink className="w-3 h-3" />
+                        </div>
+                      </a>
                     )}
+
                     {mat.video_url && (
-                      <span className="flex items-center gap-1 text-rose-600 font-semibold">
-                        <Video className="w-3.5 h-3.5" /> Video Materi
-                      </span>
+                      <a
+                        href={mat.video_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="w-full py-2 px-3 rounded-xl bg-purple-50 hover:bg-purple-100/90 text-purple-800 border border-purple-200/80 text-xs font-bold transition-all flex items-center justify-between group/vid"
+                        title="Buka video tutorial materi pembelajaran"
+                      >
+                        <div className="flex items-center gap-2">
+                          <Video className="w-4 h-4 text-purple-600" />
+                          <span className="text-xs font-bold">Video Penjelasan Pembelajaran</span>
+                        </div>
+                        <ExternalLink className="w-3.5 h-3.5 text-purple-600 group-hover/vid:translate-x-0.5 transition-transform" />
+                      </a>
+                    )}
+
+                    {!mat.pdf_url && !mat.video_url && (
+                      <div className="py-2 px-3 rounded-xl bg-slate-50 border border-slate-200/60 text-[11px] text-slate-500 font-medium flex items-center gap-2">
+                        <FileCode2 className="w-3.5 h-3.5 text-slate-400" />
+                        <span>Modul bacaan artikel teks terstruktur</span>
+                      </div>
                     )}
                   </div>
                 </div>
-              </div>
 
-              <div className="flex items-center gap-2 self-end md:self-auto shrink-0">
-                <button
-                  onClick={() => setViewingMaterial(mat)}
-                  className="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 transition-colors"
-                  title="Pratinjau Isi Materi"
-                >
-                  <Eye className="w-4 h-4" />
-                </button>
-                <button
-                  onClick={() => setEditingMaterial(mat)}
-                  className="p-2 rounded-xl bg-slate-100 hover:bg-blue-50 text-slate-600 hover:text-[#3b5bf5] transition-colors"
-                  title="Edit Materi"
-                >
-                  <Edit2 className="w-4 h-4" />
-                </button>
-                <button
-                  onClick={() => handleDelete(mat.id)}
-                  className="p-2 rounded-xl bg-slate-100 hover:bg-rose-50 text-slate-600 hover:text-rose-600 transition-colors"
-                  title="Hapus Materi"
-                >
-                  <Trash2 className="w-4 h-4" />
-                </button>
+                {/* Card Footer Actions */}
+                <div className="pt-3.5 border-t border-slate-100 flex items-center justify-between">
+                  <button
+                    type="button"
+                    onClick={() => setViewingMaterial(mat)}
+                    className="inline-flex items-center gap-1.5 text-xs font-bold text-[#3b5bf5] hover:text-blue-700 transition-colors"
+                  >
+                    <Eye className="w-3.5 h-3.5" />
+                    <span>Baca Rincian</span>
+                  </button>
+
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => setEditingMaterial(mat)}
+                      className="p-1.5 rounded-xl bg-slate-100 hover:bg-blue-50 text-slate-600 hover:text-[#3b5bf5] transition-colors"
+                      title="Edit Materi"
+                    >
+                      <Edit2 className="w-3.5 h-3.5" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setMatToDelete(mat)}
+                      className="p-1.5 rounded-xl bg-slate-100 hover:bg-rose-50 text-slate-600 hover:text-rose-600 transition-colors"
+                      title="Hapus Materi"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                </div>
               </div>
-            </div>
-          );
-        })}
+            );
+          })
+        )}
       </div>
 
       {/* Modal: Tambah Materi Baru */}
@@ -698,6 +798,19 @@ export const AdminMaterials: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* Confirmation Dialog: Hapus Materi Pembelajaran */}
+      <ConfirmDialog
+        isOpen={Boolean(matToDelete)}
+        onClose={() => setMatToDelete(null)}
+        onConfirm={handleConfirmDelete}
+        title={`Yakin Ingin Menghapus "${matToDelete?.title || 'Materi ini'}"?`}
+        description="Materi pembelajaran ini akan dihapus dari sistem dan tidak dapat diakses lagi oleh siswa di kelas terkait."
+        confirmLabel="Ya, Hapus Materi"
+        cancelLabel="Batal"
+        variant="danger"
+        icon="trash"
+      />
     </div>
   );
 };

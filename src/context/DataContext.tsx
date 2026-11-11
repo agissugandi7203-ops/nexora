@@ -11,6 +11,7 @@ import {
   Announcement,
   SiteSettings,
   Profile,
+  UserRegistrationRequest,
 } from '../types/database.types';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
 
@@ -204,6 +205,11 @@ interface DataContextType {
   announcements: Announcement[];
   addAnnouncement: (announcement: Omit<Announcement, 'id' | 'created_at'>) => Promise<{ success: boolean; error?: string }>;
   deleteAnnouncement: (id: string) => Promise<{ success: boolean; error?: string }>;
+
+  userRegistrations: UserRegistrationRequest[];
+  registerUser: (data: Omit<UserRegistrationRequest, 'id' | 'status' | 'created_at'>) => Promise<{ success: boolean; error?: string }>;
+  approveRegistration: (id: string) => Promise<{ success: boolean; error?: string }>;
+  rejectRegistration: (id: string) => Promise<{ success: boolean; error?: string }>;
   
   isLoading: boolean;
   supabaseStatus: 'connected' | 'error' | 'disconnected';
@@ -319,6 +325,21 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
     return [];
   });
+
+  const [userRegistrations, setUserRegistrations] = useState<UserRegistrationRequest[]>(() => {
+    const saved = localStorage.getItem('nexora_user_registrations');
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) return parsed;
+      } catch (e) { /* ignore */ }
+    }
+    return [];
+  });
+
+  useEffect(() => {
+    localStorage.setItem('nexora_user_registrations', JSON.stringify(userRegistrations));
+  }, [userRegistrations]);
 
   const [completedMaterialsMap, setCompletedMaterialsMap] = useState<Record<string, string[]>>(() => {
     const saved = localStorage.getItem('nexora_material_completions');
@@ -1984,6 +2005,145 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return { success: true };
   };
 
+  const registerUser = async (data: Omit<UserRegistrationRequest, 'id' | 'status' | 'created_at'>): Promise<{ success: boolean; error?: string }> => {
+    try {
+      const cleanUsername = data.username.trim().toLowerCase();
+      const cleanEmail = data.email.trim().toLowerCase();
+      const cleanExtra = (data.identifier_extra || '').trim();
+
+      const existingPending = userRegistrations.find(
+        r => r.status === 'pending' && (
+          r.username.toLowerCase() === cleanUsername ||
+          r.email.toLowerCase() === cleanEmail ||
+          (cleanExtra && r.identifier_extra.toLowerCase() === cleanExtra)
+        )
+      );
+
+      if (existingPending) {
+        return {
+          success: false,
+          error: 'Pendaftaran dengan username, email, atau NISN/NIP tersebut sudah ada dan sedang menunggu persetujuan.'
+        };
+      }
+
+      if (data.role === 'student') {
+        const studentExists = students.some(
+          s => (s.nis_nisn && s.nis_nisn.toLowerCase() === cleanExtra.toLowerCase()) ||
+               (s.profile?.username && s.profile.username.toLowerCase() === cleanUsername)
+        );
+        if (studentExists) {
+          return { success: false, error: 'NISN atau Username siswa sudah terdaftar aktif di sekolah.' };
+        }
+
+        if (isSupabaseConfigured) {
+          try {
+            if (cleanExtra) {
+              const { data: stDb } = await supabase
+                .from('students')
+                .select('id')
+                .ilike('nis_nisn', cleanExtra)
+                .maybeSingle();
+              if (stDb) {
+                return { success: false, error: `NIS "${cleanExtra}" sudah terdaftar resmi sebagai siswa sekolah.` };
+              }
+            }
+            if (cleanUsername) {
+              const { data: prDb } = await supabase
+                .from('profiles')
+                .select('id')
+                .ilike('username', cleanUsername)
+                .maybeSingle();
+              if (prDb) {
+                return { success: false, error: `Username "${cleanUsername}" sudah digunakan oleh akun lain.` };
+              }
+            }
+          } catch (e) {
+            console.warn('Supabase check during signup notice:', e);
+          }
+        }
+      }
+
+      const newRequest: UserRegistrationRequest = {
+        id: generateUUID(),
+        full_name: data.full_name.trim(),
+        email: cleanEmail,
+        username: cleanUsername,
+        role: data.role,
+        identifier_extra: cleanExtra,
+        class_id: data.class_id,
+        className: classes.find(c => c.id === data.class_id)?.name || 'Umum',
+        password: data.password,
+        status: 'pending',
+        created_at: new Date().toISOString(),
+      };
+
+      setUserRegistrations(prev => [newRequest, ...prev]);
+      return { success: true };
+    } catch (e: any) {
+      return { success: false, error: e.message || 'Gagal mengirim pendaftaran' };
+    }
+  };
+
+  const approveRegistration = async (id: string): Promise<{ success: boolean; error?: string }> => {
+    try {
+      const reg = userRegistrations.find(r => r.id === id);
+      if (!reg) return { success: false, error: 'Data pendaftaran tidak ditemukan' };
+
+      if (reg.role === 'student') {
+        const res = await addStudent({
+          full_name: reg.full_name,
+          username: reg.username,
+          nis_nisn: reg.identifier_extra || reg.username,
+          class_id: reg.class_id || (classes[0]?.id || ''),
+          gender: 'Laki-laki',
+          address: 'Alamat Siswa',
+          parent_phone: reg.identifier_extra,
+          password: reg.password,
+        });
+
+        if (!res.success) {
+          console.warn('Notice adding student on approval:', res.error);
+        }
+      } else if (reg.role === 'admin') {
+        const teacherProfile: Profile = {
+          id: generateUUID(),
+          username: reg.username,
+          full_name: reg.full_name,
+          role: 'admin',
+          status: 'active',
+          avatar_url: `https://api.dicebear.com/7.x/bottts/svg?seed=${reg.username}`,
+          phone: reg.identifier_extra || null,
+          bio: `Pengajar terdaftar`,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        };
+
+        const existingApprovedTeachers: any[] = JSON.parse(localStorage.getItem('nexora_approved_teachers') || '[]');
+        existingApprovedTeachers.push({
+          email: reg.email,
+          password: reg.password,
+          profile: teacherProfile,
+        });
+        localStorage.setItem('nexora_approved_teachers', JSON.stringify(existingApprovedTeachers));
+      }
+
+      setUserRegistrations(prev =>
+        prev.map(r => r.id === id ? { ...r, status: 'approved', reviewed_at: new Date().toISOString() } : r)
+      );
+
+      return { success: true };
+    } catch (e: any) {
+      return { success: false, error: e.message || 'Gagal menyetujui pendaftaran' };
+    }
+  };
+
+  const rejectRegistration = async (id: string): Promise<{ success: boolean; error?: string }> => {
+    setUserRegistrations(prev =>
+      prev.map(r => r.id === id ? { ...r, status: 'rejected', reviewed_at: new Date().toISOString() } : r)
+    );
+    return { success: true };
+  };
+
   const clearLocalCache = async () => {
     localStorage.removeItem('nexora_classes');
     localStorage.removeItem('nexora_subjects');
@@ -2037,6 +2197,10 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         announcements,
         addAnnouncement,
         deleteAnnouncement,
+        userRegistrations,
+        registerUser,
+        approveRegistration,
+        rejectRegistration,
         isLoading,
         supabaseStatus,
         supabaseError,

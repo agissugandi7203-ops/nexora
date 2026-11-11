@@ -1,5 +1,5 @@
 export type UserRole = 'admin' | 'student';
-export type AccountStatus = 'active' | 'inactive' | 'suspended';
+export type AccountStatus = 'active' | 'inactive' | 'suspended' | 'pending';
 export type QuestionType = 'multiple_choice' | 'true_false' | 'short_answer' | 'essay';
 export type QuestionDifficulty = 'easy' | 'medium' | 'hard';
 export type AssignmentType = 'quiz' | 'assignment';
@@ -249,4 +249,19 @@ export interface SiteSettings {
   accent_color: string;
   created_at: string;
   updated_at: string;
+}
+
+export interface UserRegistrationRequest {
+  id: string;
+  full_name: string;
+  email: string;
+  username: string;
+  role: 'student' | 'admin';
+  identifier_extra: string; // NISN untuk siswa, NIP/Mata Pelajaran untuk guru
+  class_id?: string;
+  className?: string;
+  password: string;
+  status: 'pending' | 'approved' | 'rejected';
+  created_at: string;
+  reviewed_at?: string;
 }

@@ -1,7 +1,8 @@
 import React from 'react';
-import { History, CheckCircle2, Clock, FileText, Award } from 'lucide-react';
+import { History, CheckCircle2, Clock, FileText, Award, ExternalLink } from 'lucide-react';
 import { useAuth } from '../../../context/AuthContext';
 import { useData } from '../../../context/DataContext';
+import { parseSubmissionNotes } from '../../../utils/submissionParser';
 
 export const StudentHistory: React.FC = () => {
   const { currentStudent } = useAuth();
@@ -60,11 +61,37 @@ export const StudentHistory: React.FC = () => {
 
                 <h4 className="text-base font-bold text-slate-900">{asg?.title || 'Tugas Siswa'}</h4>
 
-                {sub.student_notes && (
-                  <p className="text-xs text-slate-600 bg-slate-50 p-3 rounded-2xl border border-slate-200/80 italic">
-                    Catatan Anda: &quot;{sub.student_notes}&quot;
-                  </p>
-                )}
+                {(() => {
+                  const parsed = parseSubmissionNotes(sub.student_notes);
+                  return (
+                    <div className="space-y-2">
+                      {parsed.figmaUrl && (
+                        <div className="p-3 rounded-2xl bg-purple-50/70 border border-purple-200/80 flex items-center justify-between text-xs">
+                          <span className="font-semibold text-purple-900">🎨 Link Desain Figma Anda</span>
+                          <a
+                            href={parsed.figmaUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1 font-bold text-purple-700 hover:text-purple-900"
+                          >
+                            <span>Buka</span>
+                            <ExternalLink className="w-3 h-3" />
+                          </a>
+                        </div>
+                      )}
+                      {parsed.hasQuizAnswers && (
+                        <div className="text-[11px] font-bold text-emerald-700 bg-emerald-50 px-3 py-1.5 rounded-xl border border-emerald-200/60 inline-flex items-center gap-1.5">
+                          <span>✓</span> {parsed.totalAnswers} Butir Jawaban Kuis Tersimpan
+                        </div>
+                      )}
+                      {parsed.cleanNotes && (
+                        <p className="text-xs text-slate-600 bg-slate-50 p-3 rounded-2xl border border-slate-200/80 italic">
+                          Catatan Anda: &quot;{parsed.cleanNotes}&quot;
+                        </p>
+                      )}
+                    </div>
+                  );
+                })()}
 
                 {sub.teacher_feedback && (
                   <div className="p-3.5 rounded-2xl bg-blue-50/70 border border-blue-200/80 text-xs">

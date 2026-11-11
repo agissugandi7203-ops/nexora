@@ -8,10 +8,12 @@ import {
   X,
   School,
   Image as ImageIcon,
-  Palette
+  Palette,
+  Search,
 } from 'lucide-react';
 import { useData } from '../../../context/DataContext';
 import { Subject } from '../../../types/database.types';
+import { ConfirmDialog } from '../../../components/ui/ConfirmDialog';
 
 export const AdminSubjects: React.FC = () => {
   const { subjects, classes, addSubject, updateSubject, deleteSubject } = useData();
@@ -19,6 +21,8 @@ export const AdminSubjects: React.FC = () => {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [editingSubject, setEditingSubject] = useState<Subject | null>(null);
   const [notification, setNotification] = useState<string | null>(null);
+  const [subjectToDelete, setSubjectToDelete] = useState<Subject | null>(null);
+  const [searchTerm, setSearchTerm] = useState('');
 
   const [formData, setFormData] = useState({
     name: '',
@@ -81,15 +85,15 @@ export const AdminSubjects: React.FC = () => {
     showNotif('Mata pelajaran berhasil diperbarui!');
   };
 
-  const handleDelete = async (id: string) => {
-    if (confirm('Hapus mata pelajaran ini? Seluruh materi pembelajaran dan kuis terkait akan ikut terhapus.')) {
-      const res = await deleteSubject(id);
-      if (res && !res.success) {
-        alert('Gagal menghapus mata pelajaran: ' + (res.error || 'Terjadi kesalahan pada database'));
-        return;
-      }
-      showNotif('Mata pelajaran berhasil dihapus.');
+  const handleConfirmDelete = async () => {
+    if (!subjectToDelete) return;
+    const res = await deleteSubject(subjectToDelete.id);
+    if (res && !res.success) {
+      showNotif('Gagal menghapus mata pelajaran: ' + (res.error || 'Terjadi kesalahan pada database'));
+    } else {
+      showNotif(`Mata pelajaran ${subjectToDelete.name} berhasil dihapus.`);
     }
+    setSubjectToDelete(null);
   };
 
   const toggleClassSelection = (classId: string, currentList: string[]) => {
@@ -99,6 +103,18 @@ export const AdminSubjects: React.FC = () => {
       return [...currentList, classId];
     }
   };
+
+  const filteredSubjects = subjects.filter((sub) => {
+    const q = searchTerm.trim().toLowerCase();
+    if (!q) return true;
+    const linkedClassNames = (sub.class_ids || []).map(cid => classes.find(c => c.id === cid)?.name || '').join(' ').toLowerCase();
+    const matchSearch =
+      sub.name.toLowerCase().includes(q) ||
+      sub.code.toLowerCase().includes(q) ||
+      (sub.description || '').toLowerCase().includes(q) ||
+      linkedClassNames.includes(q);
+    return matchSearch;
+  });
 
   return (
     <div className="space-y-6">
@@ -128,51 +144,89 @@ export const AdminSubjects: React.FC = () => {
         </button>
       </div>
 
+      {/* Search Bar */}
+      <div className="bg-white p-4 rounded-3xl border border-slate-200/80 shadow-sm flex flex-col sm:flex-row gap-3 items-center justify-between">
+        <div className="relative w-full sm:w-80">
+          <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+          <input
+            type="text"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            placeholder="Cari nama mata pelajaran atau kode..."
+            className="w-full pl-10 pr-4 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:border-[#3b5bf5] focus:bg-white"
+          />
+        </div>
+
+        <div className="text-xs text-slate-500 font-bold">
+          Total: <span className="text-slate-900 font-extrabold">{filteredSubjects.length}</span> Mata Pelajaran Terdaftar
+        </div>
+      </div>
+
       {/* Grid Mata Pelajaran */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-        {subjects.map((sub) => (
-          <div
-            key={sub.id}
-            className="bg-white rounded-3xl overflow-hidden border border-slate-200/80 shadow-sm flex flex-col justify-between group hover:border-[#3b5bf5]/40 hover:shadow-md transition-all"
-          >
-            <div>
-              {/* Cover Image */}
-              <div className="h-44 w-full relative bg-slate-100 overflow-hidden">
-                <img
-                  src={sub.cover_image_url || 'https://images.unsplash.com/photo-1635070041078-e363dbe005cb?auto=format&fit=crop&q=80&w=800'}
-                  alt={sub.name}
-                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-slate-900/60 via-transparent to-transparent"></div>
-                <div className="absolute top-3 left-3 flex items-center gap-2">
-                  <span className="px-3 py-1 rounded-full bg-white/90 backdrop-blur-md text-xs font-mono font-extrabold text-[#3b5bf5] shadow-sm">
-                    {sub.code}
-                  </span>
+        {filteredSubjects.length === 0 ? (
+          <div className="col-span-full py-12 text-center bg-white rounded-3xl border border-slate-200/80 p-8 space-y-3">
+            <BookOpen className="w-10 h-10 text-slate-300 mx-auto" />
+            <h4 className="text-sm font-bold text-slate-800">
+              {searchTerm ? `Tidak ada mata pelajaran yang cocok dengan "${searchTerm}"` : 'Tidak ada mata pelajaran'}
+            </h4>
+            <p className="text-xs text-slate-400 max-w-sm mx-auto">
+              {searchTerm ? 'Coba periksa kata kunci Anda atau klik tombol di bawah untuk menyetel ulang.' : 'Belum ada mata pelajaran yang terdaftar di kurikulum sekolah.'}
+            </p>
+            {searchTerm && (
+              <button
+                type="button"
+                onClick={() => setSearchTerm('')}
+                className="mt-2 px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition-all"
+              >
+                Reset Pencarian
+              </button>
+            )}
+          </div>
+        ) : (
+          filteredSubjects.map((sub) => (
+            <div
+              key={sub.id}
+              className="bg-white rounded-3xl overflow-hidden border border-slate-200/90 shadow-sm flex flex-col justify-between group hover:border-[#3b5bf5]/40 hover:shadow-md transition-all"
+            >
+              <div>
+                {/* Cover Image */}
+                <div className="h-40 w-full relative bg-slate-100 overflow-hidden">
+                  <img
+                    src={sub.cover_image_url || 'https://images.unsplash.com/photo-1635070041078-e363dbe005cb?auto=format&fit=crop&q=80&w=800'}
+                    alt={sub.name}
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-slate-950/70 via-transparent to-transparent"></div>
+                  <div className="absolute top-3 left-3 flex items-center gap-2">
+                    <span className="px-3 py-1 rounded-full bg-white/95 backdrop-blur-md text-xs font-mono font-extrabold text-[#3b5bf5] shadow-sm">
+                      {sub.code}
+                    </span>
+                  </div>
+                  <div className="absolute top-3 right-3 flex items-center gap-1.5">
+                    <button
+                      onClick={() => setEditingSubject(sub)}
+                      className="p-2 rounded-xl bg-white/90 backdrop-blur-md hover:bg-white text-slate-700 shadow-sm transition-colors"
+                      title="Edit Mata Pelajaran"
+                    >
+                      <Edit2 className="w-3.5 h-3.5" />
+                    </button>
+                    <button
+                      onClick={() => setSubjectToDelete(sub)}
+                      className="p-2 rounded-xl bg-white/90 backdrop-blur-md hover:bg-rose-50 text-slate-700 hover:text-rose-600 shadow-sm transition-colors"
+                      title="Hapus Mata Pelajaran"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
                 </div>
-                <div className="absolute top-3 right-3 flex items-center gap-1.5">
-                  <button
-                    onClick={() => setEditingSubject(sub)}
-                    className="p-2 rounded-xl bg-white/90 backdrop-blur-md hover:bg-white text-slate-700 shadow-sm transition-colors"
-                    title="Edit"
-                  >
-                    <Edit2 className="w-3.5 h-3.5" />
-                  </button>
-                  <button
-                    onClick={() => handleDelete(sub.id)}
-                    className="p-2 rounded-xl bg-white/90 backdrop-blur-md hover:bg-rose-50 text-slate-700 hover:text-rose-600 shadow-sm transition-colors"
-                    title="Hapus"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-              </div>
 
-              {/* Body */}
-              <div className="p-6">
-                <h4 className="text-base font-extrabold text-slate-900 mb-1.5">{sub.name}</h4>
-                <p className="text-xs text-slate-500 leading-relaxed mb-4 line-clamp-2 font-medium">
-                  {sub.description || 'Tidak ada deskripsi.'}
-                </p>
+                {/* Body */}
+                <div className="p-6">
+                  <h4 className="text-base font-extrabold text-slate-900 mb-1.5">{sub.name}</h4>
+                  <p className="text-xs text-slate-500 leading-relaxed mb-4 line-clamp-2 font-medium">
+                    {sub.description || 'Tidak ada deskripsi khusus.'}
+                  </p>
 
                 {/* Linked classes pills */}
                 <div className="space-y-2 pt-3 border-t border-slate-100">
@@ -200,8 +254,9 @@ export const AdminSubjects: React.FC = () => {
               </div>
             </div>
           </div>
-        ))}
-      </div>
+        ))
+      )}
+    </div>
 
       {/* Modal: Tambah Mata Pelajaran */}
       {isAddModalOpen && (
@@ -427,6 +482,19 @@ export const AdminSubjects: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* Confirmation Dialog: Hapus Mata Pelajaran */}
+      <ConfirmDialog
+        isOpen={Boolean(subjectToDelete)}
+        onClose={() => setSubjectToDelete(null)}
+        onConfirm={handleConfirmDelete}
+        title={`Yakin Ingin Menghapus Mapel ${subjectToDelete?.name || ''}?`}
+        description="Mata pelajaran ini beserta seluruh modul materi dan kuis yang terhubung akan ikut terhapus dari sistem."
+        confirmLabel="Ya, Hapus Mapel"
+        cancelLabel="Batal"
+        variant="danger"
+        icon="trash"
+      />
     </div>
   );
 };

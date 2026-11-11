@@ -10,16 +10,19 @@ import {
   UserCheck,
   Check,
   TrendingUp,
-  Download
+  Download,
+  ExternalLink,
 } from 'lucide-react';
 import { useData } from '../../../context/DataContext';
 import { Submission, Grade } from '../../../types/database.types';
+import { parseSubmissionNotes } from '../../../utils/submissionParser';
 
 export const AdminGrading: React.FC = () => {
   const { submissions, students, assignments, classes, subjects, grades, gradeSubmission } = useData();
 
   const [activeSubTab, setActiveSubTab] = useState<'queue' | 'recap'>('queue');
   const [selectedSubmission, setSelectedSubmission] = useState<Submission | null>(null);
+  const [searchTerm, setSearchTerm] = useState('');
   const [inputScore, setInputScore] = useState<number>(85);
   const [inputFeedback, setInputFeedback] = useState<string>('');
   const [notification, setNotification] = useState<string | null>(null);
@@ -28,6 +31,18 @@ export const AdminGrading: React.FC = () => {
     setNotification(msg);
     setTimeout(() => setNotification(null), 3000);
   };
+
+  const filteredSubmissions = submissions.filter((sub) => {
+    const q = searchTerm.trim().toLowerCase();
+    if (!q) return true;
+    const student = students.find(s => s.id === sub.student_id);
+    const asg = assignments.find(a => a.id === sub.assignment_id);
+    return (
+      (student?.profile?.full_name || '').toLowerCase().includes(q) ||
+      (student?.nis_nisn || '').toLowerCase().includes(q) ||
+      (asg?.title || '').toLowerCase().includes(q)
+    );
+  });
 
   const handleOpenGradeModal = (sub: Submission) => {
     setSelectedSubmission(sub);
@@ -88,10 +103,50 @@ export const AdminGrading: React.FC = () => {
         </div>
       </div>
 
+      {/* Search Bar */}
+      <div className="bg-white p-4 rounded-3xl border border-slate-200/80 shadow-sm flex items-center justify-between">
+        <div className="relative w-full sm:w-80">
+          <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+          <input
+            type="text"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            placeholder="Cari siswa, NIS, atau judul tugas..."
+            className="w-full pl-10 pr-4 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:border-[#3b5bf5] focus:bg-white"
+          />
+        </div>
+        {searchTerm && (
+          <button
+            type="button"
+            onClick={() => setSearchTerm('')}
+            className="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition-all"
+          >
+            Hapus Pencarian
+          </button>
+        )}
+      </div>
+
       {activeSubTab === 'queue' ? (
         /* Antrean Penilaian */
         <div className="space-y-4">
-          {submissions.map((sub) => {
+          {filteredSubmissions.length === 0 ? (
+            <div className="bg-white p-12 text-center rounded-3xl border border-slate-200/80 shadow-sm text-xs font-medium text-slate-400 space-y-2">
+              <Award className="w-8 h-8 text-slate-300 mx-auto" />
+              <p className="font-bold text-slate-700">
+                {searchTerm ? `Tidak ditemukan antrean tugas yang cocok dengan "${searchTerm}"` : 'Tidak ada antrean tugas yang perlu dinilai.'}
+              </p>
+              {searchTerm && (
+                <button
+                  type="button"
+                  onClick={() => setSearchTerm('')}
+                  className="mt-2 px-3.5 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition-all"
+                >
+                  Reset Pencarian
+                </button>
+              )}
+            </div>
+          ) : (
+            filteredSubmissions.map((sub) => {
             const student = students.find(s => s.id === sub.student_id);
             const asg = assignments.find(a => a.id === sub.assignment_id);
 
@@ -112,9 +167,34 @@ export const AdminGrading: React.FC = () => {
                       <span className="text-xs text-slate-400 font-mono font-medium">({student?.nis_nisn})</span>
                     </div>
                     <p className="text-xs text-[#3b5bf5] font-bold">{asg?.title}</p>
-                    <p className="text-xs text-slate-500 mt-1 italic max-w-xl font-medium">
-                      &quot;{sub.student_notes || 'Tugas telah dikumpulkan.'}&quot;
-                    </p>
+                    {(() => {
+                      const parsed = parseSubmissionNotes(sub.student_notes);
+                      return (
+                        <div className="space-y-1.5 mt-1.5">
+                          {parsed.figmaUrl && (
+                            <a
+                              href={parsed.figmaUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-lg bg-purple-50 text-purple-700 hover:bg-purple-100 text-[11px] font-bold border border-purple-200/80 transition-colors"
+                            >
+                              <ExternalLink className="w-3 h-3 text-purple-600" />
+                              <span>Lihat Desain Figma</span>
+                            </a>
+                          )}
+                          {parsed.hasQuizAnswers && (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-emerald-50 text-emerald-800 border border-emerald-200">
+                              {parsed.totalAnswers} Butir Jawaban Kuis Tersimpan
+                            </span>
+                          )}
+                          {parsed.cleanNotes && (
+                            <p className="text-xs text-slate-500 italic max-w-xl font-medium">
+                              &quot;{parsed.cleanNotes}&quot;
+                            </p>
+                          )}
+                        </div>
+                      );
+                    })()}
                   </div>
                 </div>
 
@@ -136,7 +216,7 @@ export const AdminGrading: React.FC = () => {
                 </div>
               </div>
             );
-          })}
+          }))}
         </div>
       ) : (
         /* Buku Rekap Nilai */
@@ -218,6 +298,41 @@ export const AdminGrading: React.FC = () => {
             </div>
 
             <form onSubmit={handleSaveGrade} className="space-y-4">
+              {(() => {
+                const parsed = parseSubmissionNotes(selectedSubmission.student_notes);
+                return (
+                  <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200/90 text-xs space-y-2">
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+                      Hasil Tugas yang Dikumpulkan Siswa:
+                    </span>
+                    {parsed.figmaUrl && (
+                      <div className="flex items-center justify-between">
+                        <span className="text-purple-700 font-bold">🎨 Proyek Figma Siswa</span>
+                        <a
+                          href={parsed.figmaUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-purple-600 text-white font-bold text-[11px] hover:bg-purple-700"
+                        >
+                          <span>Buka di Figma</span>
+                          <ExternalLink className="w-3 h-3" />
+                        </a>
+                      </div>
+                    )}
+                    {parsed.hasQuizAnswers && (
+                      <p className="text-emerald-700 font-semibold">
+                        ✓ {parsed.totalAnswers} Butir Jawaban Kuis telah tersimpan di sistem
+                      </p>
+                    )}
+                    {parsed.cleanNotes && (
+                      <p className="text-slate-600 italic">
+                        &quot;{parsed.cleanNotes}&quot;
+                      </p>
+                    )}
+                  </div>
+                );
+              })()}
+
               <div>
                 <label className="block text-xs font-bold text-slate-700 mb-1.5">
                   Input Nilai Akhir (Skala 0 - 100) *

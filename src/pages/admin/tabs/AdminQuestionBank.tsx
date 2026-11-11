@@ -10,9 +10,11 @@ import {
   Check,
   FolderKanban,
   Tag,
+  Search,
 } from 'lucide-react';
 import { useData } from '../../../context/DataContext';
 import { Question, QuestionType, QuestionDifficulty } from '../../../types/database.types';
+import { ConfirmDialog } from '../../../components/ui/ConfirmDialog';
 
 export interface QuestionFormOption {
   id: string;
@@ -56,6 +58,8 @@ export const AdminQuestionBank: React.FC = () => {
   const [selectedCategoryFilter, setSelectedCategoryFilter] = useState('all');
   const [selectedTypeFilter, setSelectedTypeFilter] = useState('all');
   const [notification, setNotification] = useState<string | null>(null);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [questionToDelete, setQuestionToDelete] = useState<Question | null>(null);
 
   // Kumpulkan seluruh daftar nama Paket / Kategori unik yang sudah ada di Bank Soal
   const existingCategories = Array.from(
@@ -328,19 +332,27 @@ export const AdminQuestionBank: React.FC = () => {
     showNotif('Soal berhasil diduplikasi!');
   };
 
-  const handleDelete = async (id: string) => {
-    if (confirm('Hapus soal ini dari Bank Soal?')) {
-      await deleteQuestion(id);
-      showNotif('Soal berhasil dihapus.');
-    }
+  const handleConfirmDelete = async () => {
+    if (!questionToDelete) return;
+    await deleteQuestion(questionToDelete.id);
+    showNotif('Soal berhasil dihapus dari Bank Soal.');
+    setQuestionToDelete(null);
   };
 
   const filteredQuestions = questions.filter(q => {
+    const subject = subjects.find(s => s.id === q.subject_id);
     const matchSubject = selectedSubjectFilter === 'all' || q.subject_id === selectedSubjectFilter;
     const qCat = (q.category_name || 'Umum').trim();
     const matchCategory = selectedCategoryFilter === 'all' || qCat === selectedCategoryFilter;
     const matchType = selectedTypeFilter === 'all' || q.question_type === selectedTypeFilter;
-    return matchSubject && matchCategory && matchType;
+    const qTerm = searchTerm.trim().toLowerCase();
+    const matchSearch =
+      !qTerm ||
+      q.question_text.toLowerCase().includes(qTerm) ||
+      (q.category_name || '').toLowerCase().includes(qTerm) ||
+      (subject?.name || '').toLowerCase().includes(qTerm) ||
+      (q.options || []).some(opt => opt.option_text.toLowerCase().includes(qTerm));
+    return matchSubject && matchCategory && matchType && matchSearch;
   });
 
   return (
@@ -373,7 +385,19 @@ export const AdminQuestionBank: React.FC = () => {
 
       {/* Filters & Paket Soal Bar */}
       <div className="bg-white p-4 rounded-3xl border border-slate-200/80 shadow-sm space-y-3">
-        <div className="flex flex-wrap items-center gap-4">
+        {/* Search input for questions */}
+        <div className="relative w-full">
+          <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+          <input
+            type="text"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            placeholder="Cari teks pertanyaan soal, paket, atau pilihan jawaban..."
+            className="w-full pl-10 pr-4 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:border-[#3b5bf5] focus:bg-white"
+          />
+        </div>
+
+        <div className="flex flex-wrap items-center gap-4 pt-1">
           <div className="flex items-center gap-2">
             <Filter className="w-4 h-4 text-slate-400" />
             <span className="text-xs text-slate-500 font-bold">Mapel:</span>
@@ -431,13 +455,13 @@ export const AdminQuestionBank: React.FC = () => {
         {/* Quick Paket Pills */}
         {existingCategories.length > 0 && (
           <div className="pt-2 border-t border-slate-100 flex flex-wrap items-center gap-2">
-            <span className="text-[11px] font-bold text-slate-400 mr-1">Filter Cepat Paket:</span>
+            <span className="text-[11px] font-bold text-slate-400 mr-1">Filter Paket:</span>
             <button
               type="button"
               onClick={() => setSelectedCategoryFilter('all')}
               className={`px-3 py-1 rounded-xl text-[11px] font-bold transition-all ${
                 selectedCategoryFilter === 'all'
-                  ? 'bg-[#3b5bf5] text-white shadow-sm'
+                  ? 'bg-slate-900 text-white shadow-xs'
                   : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
               }`}
             >
@@ -455,13 +479,13 @@ export const AdminQuestionBank: React.FC = () => {
                   onClick={() => setSelectedCategoryFilter(cat)}
                   className={`px-3 py-1 rounded-xl text-[11px] font-bold flex items-center gap-1.5 transition-all ${
                     isSelected
-                      ? 'bg-indigo-600 text-white shadow-sm'
-                      : 'bg-indigo-50 text-indigo-700 hover:bg-indigo-100 border border-indigo-200/60'
+                      ? 'bg-slate-900 text-white shadow-xs'
+                      : 'bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-200/80'
                   }`}
                 >
-                  <Tag className="w-3 h-3" />
+                  <Tag className="w-3 h-3 text-slate-400" />
                   <span>{cat}</span>
-                  <span className={`px-1.5 py-0.2 rounded-full text-[10px] ${isSelected ? 'bg-white/20 text-white' : 'bg-indigo-100 text-indigo-800'}`}>
+                  <span className={`px-1.5 py-0.2 rounded-full text-[10px] ${isSelected ? 'bg-white/20 text-white' : 'bg-slate-200 text-slate-700 font-bold'}`}>
                     {count}
                   </span>
                 </button>
@@ -474,8 +498,22 @@ export const AdminQuestionBank: React.FC = () => {
       {/* Questions List */}
       <div className="space-y-4">
         {filteredQuestions.length === 0 ? (
-          <div className="bg-white p-12 text-center text-slate-400 rounded-3xl border border-slate-200/80 shadow-sm text-xs font-medium">
-            Belum ada soal pada kriteria filter ini. Klik &quot;Buat Soal Baru&quot; untuk menambahkan.
+          <div className="bg-white p-12 text-center text-slate-400 rounded-3xl border border-slate-200/80 shadow-sm text-xs font-medium space-y-3">
+            <h4 className="text-sm font-bold text-slate-800">
+              {searchTerm ? `Tidak ditemukan soal yang cocok dengan "${searchTerm}"` : 'Belum ada soal pada kriteria filter ini.'}
+            </h4>
+            <p className="text-xs text-slate-400 max-w-sm mx-auto">
+              {searchTerm ? 'Coba periksa kata kunci Anda atau klik tombol di bawah untuk menyetel ulang pencarian.' : 'Klik "Buat Soal Baru" untuk mulai menambahkan butir soal ke Bank Soal.'}
+            </p>
+            {searchTerm && (
+              <button
+                type="button"
+                onClick={() => setSearchTerm('')}
+                className="mt-2 px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition-all"
+              >
+                Reset Pencarian
+              </button>
+            )}
           </div>
         ) : (
           filteredQuestions.map((q, index) => {
@@ -484,31 +522,33 @@ export const AdminQuestionBank: React.FC = () => {
             return (
               <div
                 key={q.id}
-                className="bg-white rounded-3xl p-6 border border-slate-200/80 shadow-sm space-y-4 hover:border-[#3b5bf5]/40 hover:shadow-md transition-all"
+                className="bg-white rounded-3xl p-6 border border-slate-200/80 shadow-sm space-y-4 hover:border-[#3b5bf5]/30 hover:shadow-md transition-all"
               >
+                {/* Header Strip with High Visual Hierarchy */}
                 <div className="flex items-start justify-between gap-4">
                   <div className="flex flex-wrap items-center gap-2">
-                    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-blue-50 text-[#3b5bf5]">
-                      {subject?.name || 'Mapel'}
+                    <span className="px-2.5 py-1 rounded-xl bg-slate-900 text-white font-mono text-xs font-bold shadow-xs">
+                      No. {index + 1}
                     </span>
-                    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-200/70 flex items-center gap-1">
-                      <Tag className="w-3 h-3" />
-                      Paket: {q.category_name || 'Umum'}
+                    <span className="text-xs font-bold text-slate-800">
+                      {subject?.name || 'Mata Pelajaran'}
                     </span>
-                    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-700">
+                    <span className="text-slate-300">&bull;</span>
+                    <span className="px-2.5 py-1 rounded-xl bg-slate-100 text-slate-700 border border-slate-200/80 text-[11px] font-semibold flex items-center gap-1.5">
+                      <FolderKanban className="w-3.5 h-3.5 text-slate-500" />
+                      <span>{q.category_name || 'Umum'}</span>
+                    </span>
+                    <span className="px-2.5 py-1 rounded-xl bg-slate-100 text-slate-600 text-[11px] font-medium">
                       {q.question_type === 'multiple_choice' && 'Pilihan Ganda'}
                       {q.question_type === 'true_false' && 'Benar / Salah'}
                       {q.question_type === 'short_answer' && 'Isian Singkat'}
                       {q.question_type === 'essay' && 'Esai'}
                     </span>
-                    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-600">
-                      Bobot: {q.points} Poin
+                    <span className="px-2.5 py-1 rounded-xl bg-blue-50 text-[#3b5bf5] border border-blue-200/60 text-[11px] font-bold">
+                      {q.points} Poin
                     </span>
-                    <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
-                      q.difficulty === 'easy' ? 'bg-[#1cd485]/15 text-[#0fa868]' :
-                      q.difficulty === 'medium' ? 'bg-amber-50 text-amber-600' : 'bg-rose-50 text-rose-600'
-                    }`}>
-                      {q.difficulty === 'easy' ? 'Mudah' : q.difficulty === 'medium' ? 'Sedang' : 'Sulit'}
+                    <span className="px-2 py-0.5 rounded-lg text-[10px] font-semibold text-slate-500 bg-slate-50 border border-slate-200/60">
+                      {q.difficulty === 'easy' ? 'Tingkat Mudah' : q.difficulty === 'medium' ? 'Tingkat Sedang' : 'Tingkat Sulit'}
                     </span>
                   </div>
 
@@ -528,7 +568,7 @@ export const AdminQuestionBank: React.FC = () => {
                       <Copy className="w-3.5 h-3.5" />
                     </button>
                     <button
-                      onClick={() => handleDelete(q.id)}
+                      onClick={() => setQuestionToDelete(q)}
                       className="p-2 rounded-xl bg-slate-100 hover:bg-rose-50 text-slate-600 hover:text-rose-600 transition-colors"
                       title="Hapus Soal"
                     >
@@ -538,62 +578,97 @@ export const AdminQuestionBank: React.FC = () => {
                 </div>
 
                 {/* Question Text */}
-                <p className="text-sm font-bold text-slate-900 leading-relaxed">
-                  <span className="text-[#3b5bf5] mr-2">Q{index + 1}.</span>
+                <h4 className="text-sm font-bold text-slate-900 leading-relaxed pt-1">
                   {q.question_text}
-                </p>
+                </h4>
 
                 {/* Options display */}
                 {q.question_type === 'multiple_choice' && (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-2">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
                     {q.options?.map((opt, i) => (
                       <div
                         key={opt.id}
-                        className={`p-3 rounded-xl border text-xs flex items-center justify-between ${
+                        className={`p-3 rounded-2xl border text-xs flex items-center justify-between gap-3 transition-colors ${
                           opt.is_correct
-                            ? 'bg-[#1cd485]/15 border-emerald-200 text-[#0fa868] font-bold'
-                            : 'bg-slate-50 border-slate-200 text-slate-700 font-medium'
+                            ? 'bg-emerald-50/70 border-2 border-emerald-500/70 text-slate-900 shadow-xs'
+                            : 'bg-white border-slate-200/90 text-slate-700 hover:border-slate-300'
                         }`}
                       >
-                        <span>
-                          <strong className="mr-1.5">{String.fromCharCode(65 + i)}.</strong>
-                          {opt.option_text}
-                        </span>
-                        {opt.is_correct && <Check className="w-4 h-4 text-[#0fa868] shrink-0" />}
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <span
+                            className={`w-6 h-6 rounded-lg font-bold flex items-center justify-center shrink-0 text-xs ${
+                              opt.is_correct
+                                ? 'bg-emerald-600 text-white shadow-xs'
+                                : 'bg-slate-100 text-slate-700 border border-slate-200'
+                            }`}
+                          >
+                            {String.fromCharCode(65 + i)}
+                          </span>
+                          <span className={`leading-snug truncate ${opt.is_correct ? 'font-bold text-slate-900' : 'font-medium text-slate-700'}`}>
+                            {opt.option_text}
+                          </span>
+                        </div>
+                        {opt.is_correct && (
+                          <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-bold flex items-center gap-1 shrink-0">
+                            <Check className="w-3 h-3 text-emerald-600" />
+                            <span>Kunci</span>
+                          </span>
+                        )}
                       </div>
                     ))}
                   </div>
                 )}
 
                 {q.question_type === 'true_false' && (
-                  <div className="flex gap-3 pt-2">
-                    {q.options?.map((opt) => (
+                  <div className="flex flex-wrap gap-3 pt-1">
+                    {q.options?.map((opt, i) => (
                       <div
                         key={opt.id}
-                        className={`px-4 py-2 rounded-xl border text-xs flex items-center gap-2 ${
+                        className={`px-4 py-2.5 rounded-2xl border text-xs flex items-center gap-2.5 ${
                           opt.is_correct
-                            ? 'bg-[#1cd485]/15 border-emerald-200 text-[#0fa868] font-bold'
-                            : 'bg-slate-50 border-slate-200 text-slate-700 font-medium'
+                            ? 'bg-emerald-50/70 border-2 border-emerald-500/70 text-slate-900 font-bold shadow-xs'
+                            : 'bg-white border-slate-200/90 text-slate-700 font-medium'
                         }`}
                       >
+                        <span
+                          className={`w-6 h-6 rounded-lg font-bold flex items-center justify-center shrink-0 text-xs ${
+                            opt.is_correct
+                              ? 'bg-emerald-600 text-white shadow-xs'
+                              : 'bg-slate-100 text-slate-700 border border-slate-200'
+                          }`}
+                        >
+                          {String.fromCharCode(65 + i)}
+                        </span>
                         <span>{opt.option_text}</span>
-                        {opt.is_correct && <Check className="w-4 h-4 text-[#0fa868]" />}
+                        {opt.is_correct && (
+                          <span className="ml-1 px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-bold flex items-center gap-1">
+                            <Check className="w-3 h-3 text-emerald-600" />
+                            <span>Kunci</span>
+                          </span>
+                        )}
                       </div>
                     ))}
                   </div>
                 )}
 
                 {q.question_type === 'short_answer' && (
-                  <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 text-xs">
+                  <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200/80 text-xs flex items-center gap-2">
                     <span className="text-slate-500 font-medium">Kunci Jawaban Singkat: </span>
-                    <span className="font-mono font-extrabold text-[#3b5bf5]">{q.short_answer_key}</span>
+                    <span className="font-mono font-extrabold text-slate-900 bg-white px-2.5 py-1 rounded-lg border border-slate-200">{q.short_answer_key}</span>
                   </div>
                 )}
 
                 {q.question_type === 'essay' && (
-                  <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 text-xs text-slate-600">
-                    <span className="text-[#3b5bf5] font-bold">Petunjuk Koreksi Manual: </span>
-                    {q.explanation || 'Guru memeriksa jawaban teks siswa secara manual dan memberikan nilai.'}
+                  <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200/80 text-xs text-slate-600">
+                    <span className="text-slate-900 font-bold">Petunjuk Koreksi Guru: </span>
+                    {q.explanation || 'Jawaban esai dikoreksi manual melalui menu Penilaian & Grading.'}
+                  </div>
+                )}
+
+                {q.explanation && q.question_type !== 'essay' && (
+                  <div className="p-3 rounded-2xl bg-slate-50 border border-slate-200/60 text-xs text-slate-600 leading-relaxed">
+                    <span className="font-bold text-slate-800">Pembahasan / Penjelasan: </span>
+                    {q.explanation}
                   </div>
                 )}
               </div>
@@ -1116,6 +1191,19 @@ export const AdminQuestionBank: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* Confirmation Dialog: Hapus Soal */}
+      <ConfirmDialog
+        isOpen={Boolean(questionToDelete)}
+        onClose={() => setQuestionToDelete(null)}
+        onConfirm={handleConfirmDelete}
+        title="Yakin Ingin Menghapus Soal Ini?"
+        description="Soal ini akan dihapus permanen dari Bank Soal. Soal yang sudah digunakan pada tugas/kuis yang sedang berjalan mungkin terpengaruh."
+        confirmLabel="Ya, Hapus Soal"
+        cancelLabel="Batal"
+        variant="danger"
+        icon="trash"
+      />
     </div>
   );
 };

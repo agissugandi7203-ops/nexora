@@ -3,7 +3,7 @@ import {
   Settings,
   Save,
   CheckCircle2,
-  Sparkles,
+  Globe,
   User,
   Mail,
   Phone,
@@ -21,9 +21,13 @@ import {
 } from 'lucide-react';
 import { useData } from '../../../context/DataContext';
 import { supabase, isSupabaseConfigured } from '../../../lib/supabase';
+import { ConfirmDialog } from '../../../components/ui/ConfirmDialog';
 
 export const AdminSettings: React.FC = () => {
   const { siteSettings, updateSiteSettings, announcements, addAnnouncement, deleteAnnouncement, clearLocalCache, retrySupabaseConnection } = useData();
+
+  const [announcementToDelete, setAnnouncementToDelete] = useState<{ id: string; title: string } | null>(null);
+  const [showClearCacheConfirm, setShowClearCacheConfirm] = useState(false);
 
   const [formData, setFormData] = useState({
     site_name: siteSettings.site_name,
@@ -177,13 +181,22 @@ export const AdminSettings: React.FC = () => {
     showNotif('Pengumuman baru berhasil diterbitkan!');
   };
 
-  const handleDeleteAnnouncement = async (id: string) => {
+  const handleConfirmDeleteAnnouncement = async () => {
+    if (!announcementToDelete) return;
+    const { id, title } = announcementToDelete;
+    setAnnouncementToDelete(null);
     await deleteAnnouncement(id);
-    showNotif('Pengumuman berhasil dihapus.');
+    showNotif(`Pengumuman "${title}" berhasil dihapus.`);
+  };
+
+  const handleConfirmClearCache = async () => {
+    setShowClearCacheConfirm(false);
+    await clearLocalCache();
+    showNotif('Cache browser berhasil dibersihkan & disinkronkan!');
   };
 
   return (
-    <div className="space-y-8 max-w-4xl">
+    <div className="space-y-8 max-w-4xl mx-auto w-full pb-16">
       {/* Toast Notification */}
       {notification && (
         <div className="fixed bottom-6 right-6 z-50 p-4 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-sm shadow-xl flex items-center gap-2">
@@ -193,18 +206,24 @@ export const AdminSettings: React.FC = () => {
       )}
 
       {/* Header */}
-      <div>
-        <h3 className="text-xl font-extrabold text-slate-900">Pengaturan Website & Identitas Brand</h3>
-        <p className="text-xs text-slate-500 font-medium">
-          Ubah konfigurasi nama brand, foto dan profil pengajar, komitmen pengajaran, spesialisasi, pengumuman, dan kontak resmi
-        </p>
+      <div className="bg-white p-6 sm:p-8 rounded-3xl border border-slate-200/80 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-50 text-[#3b5bf5] border border-blue-200/80 text-xs font-bold mb-2">
+            <Settings className="w-3.5 h-3.5" />
+            <span>Pusat Konfigurasi Sistem LMS</span>
+          </div>
+          <h3 className="text-xl sm:text-2xl font-extrabold text-slate-900">Pengaturan Website & Identitas Brand</h3>
+          <p className="text-xs text-slate-500 font-medium mt-1">
+            Ubah konfigurasi nama brand platform, foto dan profil pengajar, komitmen, spesialisasi, pengumuman sekolah, serta sinkronisasi data
+          </p>
+        </div>
       </div>
 
       <form onSubmit={handleSaveSettings} className="space-y-6">
         {/* Platform Identity */}
         <div className="bg-white p-6 sm:p-8 rounded-3xl border border-slate-200/80 shadow-sm space-y-4">
           <h4 className="text-sm font-extrabold text-slate-900 flex items-center gap-2">
-            <Sparkles className="w-4 h-4 text-[#3b5bf5]" />
+            <Globe className="w-4 h-4 text-[#3b5bf5]" />
             Identitas Platform LMS
           </h4>
 
@@ -462,7 +481,7 @@ export const AdminSettings: React.FC = () => {
                 <p className="text-xs text-slate-500 mt-1 font-medium">{ann.content}</p>
               </div>
               <button
-                onClick={() => handleDeleteAnnouncement(ann.id)}
+                onClick={() => setAnnouncementToDelete({ id: ann.id, title: ann.title })}
                 className="p-1.5 text-slate-400 hover:text-rose-600 transition-colors"
                 title="Hapus pengumuman"
               >
@@ -497,12 +516,7 @@ export const AdminSettings: React.FC = () => {
 
           <button
             type="button"
-            onClick={async () => {
-              if (confirm('Bersihkan seluruh cache browser (localStorage) dan muat ulang data asli dari database Supabase?')) {
-                await clearLocalCache();
-                showNotif('Cache browser berhasil dibersihkan & disinkronkan!');
-              }
-            }}
+            onClick={() => setShowClearCacheConfirm(true)}
             className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-rose-50 border border-rose-200 hover:bg-rose-100 text-xs font-bold text-rose-600 transition-all shadow-sm"
           >
             <Trash2 className="w-3.5 h-3.5 text-rose-600" />
@@ -510,6 +524,30 @@ export const AdminSettings: React.FC = () => {
           </button>
         </div>
       </div>
+
+      {/* Confirmation Dialog: Delete Announcement */}
+      <ConfirmDialog
+        isOpen={!!announcementToDelete}
+        onClose={() => setAnnouncementToDelete(null)}
+        onConfirm={handleConfirmDeleteAnnouncement}
+        title="Hapus Pengumuman?"
+        description={`Apakah Anda yakin ingin menghapus pengumuman "${announcementToDelete?.title}"? Pengumuman tidak akan tampil lagi di dashboard siswa.`}
+        confirmText="Ya, Hapus Pengumuman"
+        cancelText="Batal"
+        variant="danger"
+      />
+
+      {/* Confirmation Dialog: Clear Cache */}
+      <ConfirmDialog
+        isOpen={showClearCacheConfirm}
+        onClose={() => setShowClearCacheConfirm(false)}
+        onConfirm={handleConfirmClearCache}
+        title="Bersihkan Cache Browser?"
+        description="Apakah Anda yakin ingin membersihkan seluruh cache lokal (localStorage) dan memuat ulang data asli langsung dari database Supabase? Halaman akan diperbarui otomatis."
+        confirmText="Ya, Bersihkan & Muat Ulang"
+        cancelText="Batal"
+        variant="warning"
+      />
     </div>
   );
 };

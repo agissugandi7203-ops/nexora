@@ -1,9 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Sparkles, Menu, X, LogIn, LayoutDashboard, GraduationCap, School } from 'lucide-react';
+import { Menu, X, LogIn, LayoutDashboard, School } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useData } from '../context/DataContext';
-import '../styles/landing.css';
 
 export const Navbar: React.FC = () => {
   const { siteSettings, supabaseStatus, supabaseError, retrySupabaseConnection } = useData();
@@ -22,21 +21,25 @@ export const Navbar: React.FC = () => {
   return (
     <header className="fixed top-4 left-0 right-0 z-50 px-4 sm:px-6 lg:px-8 pointer-events-none">
       <div
-        className={`max-w-7xl mx-auto px-4 sm:px-6 py-3 pointer-events-auto nexora-navbar-pill ${
-          scrolled ? 'is-scrolled' : ''
+        className={`max-w-7xl mx-auto px-5 sm:px-6 py-3 pointer-events-auto rounded-full transition-all duration-300 ${
+          scrolled
+            ? 'bg-white/95 shadow-[0_10px_30px_-5px_rgba(5,26,36,0.1),0_0_0_1px_rgba(5,26,36,0.06)] backdrop-blur-md'
+            : 'bg-white/80 shadow-[0_4px_20px_-2px_rgba(5,26,36,0.05),0_0_0_1px_rgba(5,26,36,0.04)] backdrop-blur-md'
         }`}
       >
         <div className="flex items-center justify-between">
           {/* Brand Logo */}
-          <Link to="/" className="flex items-center gap-3 group">
-            <div className="w-10 h-10 rounded-xl bg-blue-600 border-2 border-slate-900 shadow-[0_3px_0_0_#0f172a] flex items-center justify-center group-hover:-translate-y-0.5 transition-transform">
-              <Sparkles className="w-5 h-5 text-yellow-300" />
+          <Link to="/" className="flex items-center gap-3 group outline-none">
+            <div className="w-9 h-9 rounded-xl bg-[#051A24] flex items-center justify-center group-hover:scale-105 transition-transform">
+              <svg className="w-5 h-5 fill-white" viewBox="0 0 256 256" aria-hidden="true">
+                <path d="M 128 128 C 128 198.692 70.692 256 0 256 C 0 185.308 57.308 128 128 128 Z M 128 128 C 198.692 128 256 185.308 256 256 C 185.308 256 128 198.692 128 128 Z M 0 0 C 70.692 0 128 57.308 128 128 C 57.308 128 0 70.692 0 0 Z M 256 0 C 256 70.692 198.692 128 128 128 C 128 57.308 185.308 0 256 0 Z" />
+              </svg>
             </div>
             <div className="flex items-center gap-2">
-              <span className="font-display text-xl sm:text-2xl font-extrabold tracking-tight text-slate-900">
-                {siteSettings.site_name || 'NEXORA'}
+              <span className="font-semibold text-lg sm:text-xl tracking-tight text-[#051A24]">
+                Marhas LMS
               </span>
-              <span className="hidden sm:inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-yellow-300 border-2 border-slate-900 text-[11px] font-extrabold text-slate-900">
+              <span className="hidden sm:inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-slate-100 text-[11px] font-medium text-slate-700 border border-slate-200">
                 <School className="w-3 h-3" />
                 SMK MARHAS
               </span>
@@ -47,22 +50,22 @@ export const Navbar: React.FC = () => {
           <div className="hidden xl:flex items-center">
             <button
               onClick={() => retrySupabaseConnection()}
-              className={`flex items-center gap-2 px-3 py-1 rounded-full text-[11px] font-extrabold border-2 border-slate-900 transition-transform hover:-translate-y-0.5 ${
+              className={`flex items-center gap-2 px-3 py-1 rounded-full text-[11px] font-medium border transition-colors ${
                 supabaseStatus === 'connected'
-                  ? 'bg-emerald-300 text-slate-900'
+                  ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
                   : supabaseStatus === 'error'
-                  ? 'bg-rose-300 text-slate-900'
-                  : 'bg-amber-200 text-slate-900'
+                  ? 'bg-rose-50 text-rose-800 border-rose-200'
+                  : 'bg-amber-50 text-amber-800 border-amber-200'
               }`}
               title={supabaseError || (supabaseStatus === 'connected' ? 'Terhubung ke Supabase' : 'Klik untuk tes koneksi ulang')}
             >
               <span
-                className={`w-2 h-2 rounded-full border border-slate-900 ${
+                className={`w-1.5 h-1.5 rounded-full ${
                   supabaseStatus === 'connected'
-                    ? 'bg-emerald-600 animate-pulse'
+                    ? 'bg-emerald-500 animate-pulse'
                     : supabaseStatus === 'error'
-                    ? 'bg-rose-600'
-                    : 'bg-amber-600'
+                    ? 'bg-rose-500'
+                    : 'bg-amber-500'
                 }`}
               />
               <span>
@@ -75,12 +78,13 @@ export const Navbar: React.FC = () => {
             </button>
           </div>
 
-          {/* Desktop Navigation */}
-          <nav className="hidden md:flex items-center space-x-7 text-sm font-extrabold text-slate-700">
-            <a href="#beranda" className="hover:text-blue-600 transition-colors">Beranda</a>
-            <a href="#tentang" className="hover:text-blue-600 transition-colors">Alur Belajar</a>
-            <a href="#mata-pelajaran" className="hover:text-blue-600 transition-colors">Mata Pelajaran</a>
-            <a href="#pengajar" className="hover:text-blue-600 transition-colors">Pengajar</a>
+          {/* Desktop Navigation Links */}
+          <nav className="hidden md:flex items-center space-x-6 text-sm font-medium text-[#051A24]/80">
+            <a href="#hero" className="hover:text-[#051A24] transition-colors">Hero</a>
+            <a href="#studio-intro" className="hover:text-[#051A24] transition-colors">Marhas LMS</a>
+            <a href="#modules" className="hover:text-[#051A24] transition-colors">Projects</a>
+            <a href="#clientele" className="hover:text-[#051A24] transition-colors">Testimonials</a>
+            <a href="#billing" className="hover:text-[#051A24] transition-colors">Pricing</a>
           </nav>
 
           {/* Auth Action Buttons */}
@@ -89,44 +93,44 @@ export const Navbar: React.FC = () => {
               <div className="flex items-center gap-2.5">
                 <Link
                   to={role === 'admin' ? '/admin' : '/student'}
-                  className="nexora-btn-primary px-4 py-2 text-xs flex items-center gap-2"
+                  className="px-4 py-2 rounded-full bg-[#051A24] text-white text-xs font-medium flex items-center gap-2 shadow-btn-primary hover:bg-[#092634] transition-all"
                 >
                   <LayoutDashboard className="w-4 h-4" />
-                  <span>Dashboard {role === 'admin' ? 'Guru' : 'Siswa'} ({currentUser?.full_name?.split(' ')[0]})</span>
+                  <span>Dashboard {role === 'admin' ? 'Guru' : 'Siswa'}</span>
                 </Link>
 
                 <button
-                  onClick={logout}
-                  className="px-3.5 py-2 rounded-xl bg-rose-100 border-2 border-slate-900 text-slate-900 hover:bg-rose-200 text-xs font-extrabold transition-colors"
+                  onClick={() => logout()}
+                  className="text-xs text-slate-500 hover:text-rose-600 transition-colors font-medium px-2 py-1"
                 >
                   Keluar
                 </button>
               </div>
             ) : (
-              <div className="flex items-center gap-2.5">
+              <div className="flex items-center gap-2">
                 <Link
                   to="/login-siswa"
-                  className="nexora-btn-yellow px-4 py-2 text-xs flex items-center gap-1.5"
+                  className="px-4 py-2 rounded-full bg-slate-100 hover:bg-slate-200 text-[#051A24] text-xs font-medium transition-colors"
                 >
-                  <GraduationCap className="w-4 h-4" />
-                  <span>Login Siswa</span>
+                  Masuk Siswa
                 </Link>
                 <Link
                   to="/login-admin"
-                  className="nexora-btn-primary px-4 py-2 text-xs flex items-center gap-1.5"
+                  className="px-4 py-2 rounded-full bg-[#051A24] text-white text-xs font-medium shadow-btn-primary hover:bg-[#092634] transition-all flex items-center gap-1.5"
                 >
-                  <LogIn className="w-4 h-4" />
+                  <LogIn className="w-3.5 h-3.5" />
                   <span>Portal Guru</span>
                 </Link>
               </div>
             )}
           </div>
 
-          {/* Mobile Menu Toggle */}
-          <div className="flex md:hidden items-center">
+          {/* Mobile Menu Trigger */}
+          <div className="flex md:hidden items-center gap-2">
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="p-2 rounded-xl bg-slate-100 border-2 border-slate-900 text-slate-900 focus:outline-none"
+              className="p-2 rounded-full text-slate-700 hover:bg-slate-100 transition-colors"
+              aria-label="Toggle menu"
             >
               {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
             </button>
@@ -134,82 +138,67 @@ export const Navbar: React.FC = () => {
         </div>
       </div>
 
-      {/* Mobile Dropdown */}
+      {/* Mobile Drawer Menu */}
       {mobileMenuOpen && (
-        <div className="md:hidden mt-2 max-w-7xl mx-auto pointer-events-auto bg-white border-2 border-slate-900 shadow-[0_8px_0_0_#0f172a] rounded-3xl p-5 space-y-3">
-          <a
-            href="#beranda"
-            onClick={() => setMobileMenuOpen(false)}
-            className="block px-3 py-2 rounded-xl text-sm font-extrabold text-slate-900 hover:bg-slate-100"
-          >
-            Beranda
-          </a>
-          <a
-            href="#tentang"
-            onClick={() => setMobileMenuOpen(false)}
-            className="block px-3 py-2 rounded-xl text-sm font-extrabold text-slate-900 hover:bg-slate-100"
-          >
-            Alur Belajar
-          </a>
-          <a
-            href="#mata-pelajaran"
-            onClick={() => setMobileMenuOpen(false)}
-            className="block px-3 py-2 rounded-xl text-sm font-extrabold text-slate-900 hover:bg-slate-100"
-          >
-            Mata Pelajaran
-          </a>
-          <a
-            href="#pengajar"
-            onClick={() => setMobileMenuOpen(false)}
-            className="block px-3 py-2 rounded-xl text-sm font-extrabold text-slate-900 hover:bg-slate-100"
-          >
-            Profil Pengajar
-          </a>
+        <div className="md:hidden mt-2 max-w-7xl mx-auto px-4 pointer-events-auto">
+          <div className="bg-white/95 backdrop-blur-xl border border-slate-200/80 rounded-3xl p-5 shadow-2xl flex flex-col gap-4">
+            <nav className="flex flex-col gap-2.5 text-sm font-medium text-[#051A24]">
+              <a
+                href="#hero"
+                onClick={() => setMobileMenuOpen(false)}
+                className="py-1.5 px-3 rounded-xl hover:bg-slate-50 transition-colors"
+              >
+                Hero
+              </a>
+              <a
+                href="#studio-intro"
+                onClick={() => setMobileMenuOpen(false)}
+                className="py-1.5 px-3 rounded-xl hover:bg-slate-50 transition-colors"
+              >
+                Marhas LMS Studio
+              </a>
+              <a
+                href="#modules"
+                onClick={() => setMobileMenuOpen(false)}
+                className="py-1.5 px-3 rounded-xl hover:bg-slate-50 transition-colors"
+              >
+                Projects
+              </a>
+              <a
+                href="#clientele"
+                onClick={() => setMobileMenuOpen(false)}
+                className="py-1.5 px-3 rounded-xl hover:bg-slate-50 transition-colors"
+              >
+                Testimonials
+              </a>
+              <a
+                href="#billing"
+                onClick={() => setMobileMenuOpen(false)}
+                className="py-1.5 px-3 rounded-xl hover:bg-slate-50 transition-colors"
+              >
+                Pricing
+              </a>
+            </nav>
 
-          <div className="pt-3 border-t-2 border-dashed border-slate-200 flex flex-col gap-2.5">
-            {isAuthenticated ? (
-              <>
-                <Link
-                  to={role === 'admin' ? '/admin' : '/student'}
-                  onClick={() => setMobileMenuOpen(false)}
-                  className="nexora-btn-primary py-2.5 px-4 text-center text-xs flex items-center justify-center gap-2"
-                >
-                  <LayoutDashboard className="w-4 h-4" />
-                  <span>Buka Dashboard {role === 'admin' ? 'Guru' : 'Siswa'}</span>
-                </Link>
-                <button
-                  onClick={() => {
-                    logout();
-                    setMobileMenuOpen(false);
-                  }}
-                  className="w-full py-2.5 rounded-xl bg-rose-100 border-2 border-slate-900 text-slate-900 text-xs font-extrabold"
-                >
-                  Keluar dari Akun
-                </button>
-              </>
-            ) : (
-              <>
-                <Link
-                  to="/login-siswa"
-                  onClick={() => setMobileMenuOpen(false)}
-                  className="nexora-btn-yellow py-2.5 px-4 text-center text-xs flex items-center justify-center gap-2"
-                >
-                  <GraduationCap className="w-4 h-4" />
-                  <span>Login Siswa SMK MARHAS</span>
-                </Link>
-                <Link
-                  to="/login-admin"
-                  onClick={() => setMobileMenuOpen(false)}
-                  className="nexora-btn-primary py-2.5 px-4 text-center text-xs flex items-center justify-center gap-2"
-                >
-                  <LogIn className="w-4 h-4" />
-                  <span>Portal Guru / Admin</span>
-                </Link>
-              </>
-            )}
+            <div className="pt-3 border-t border-slate-100 flex flex-col gap-2">
+              <Link
+                to="/login-siswa"
+                className="w-full text-center py-2.5 rounded-full bg-slate-100 text-xs font-semibold text-[#051A24]"
+              >
+                Masuk Siswa
+              </Link>
+              <Link
+                to="/login-admin"
+                className="w-full text-center py-2.5 rounded-full bg-[#051A24] text-xs font-semibold text-white shadow-btn-primary"
+              >
+                Portal Guru
+              </Link>
+            </div>
           </div>
         </div>
       )}
     </header>
   );
 };
+
+export default Navbar;

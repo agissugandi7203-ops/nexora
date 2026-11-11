@@ -127,6 +127,46 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return { success: true };
       }
 
+      // 4. Cek pendaftaran akun guru (pending / ditolak)
+      const regStr = localStorage.getItem('nexora_user_registrations');
+      if (regStr) {
+        try {
+          const regs: any[] = JSON.parse(regStr);
+          const pendingTeacher = regs.find(
+            (r: any) => r.role === 'admin' && (r.email?.toLowerCase() === cleanEmail || r.username?.toLowerCase() === cleanEmail)
+          );
+          if (pendingTeacher) {
+            if (pendingTeacher.status === 'pending') {
+              return {
+                success: false,
+                error: 'Pendaftaran akun pengajar Anda sedang menunggu persetujuan dari Admin Utama.',
+              };
+            }
+            if (pendingTeacher.status === 'rejected') {
+              return {
+                success: false,
+                error: 'Pendaftaran akun pengajar Anda telah ditolak oleh Admin Utama.',
+              };
+            }
+          }
+        } catch (e) { /* ignore */ }
+      }
+
+      // 5. Cek guru yang telah disetujui (Approved Teachers)
+      const appTeachersStr = localStorage.getItem('nexora_approved_teachers');
+      if (appTeachersStr) {
+        try {
+          const teachers: any[] = JSON.parse(appTeachersStr);
+          const matchTeacher = teachers.find(
+            (t: any) => (t.email?.toLowerCase() === cleanEmail || t.profile?.username?.toLowerCase() === cleanEmail) && t.password === pass
+          );
+          if (matchTeacher) {
+            setCurrentUser(matchTeacher.profile);
+            return { success: true };
+          }
+        } catch (e) { /* ignore */ }
+      }
+
       return { success: false, error: 'Email atau kata sandi pengajar tidak cocok. Silakan periksa kembali.' };
     } catch (err: any) {
       return { success: false, error: err.message || 'Gagal login guru' };
@@ -141,7 +181,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const cleanId = identifier.trim().toLowerCase();
 
     try {
-      // 1. Cek langsung ke database Supabase
+      // 1. Cek langsung ke database Supabase (Prioritas Utama untuk Siswa Sekolah yang Ada)
       if (isSupabaseConfigured) {
         try {
           let foundStudent: any = null;
@@ -222,7 +262,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
       }
 
-      // 2. Cek ke cache lokal siswa (siswa yang telah didaftarkan guru)
+      // 2. Cek ke cache lokal siswa aktif
       const savedStudentsStr = localStorage.getItem('nexora_students');
       if (savedStudentsStr) {
         try {
@@ -246,6 +286,32 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               return { success: true };
             } else {
               return { success: false, error: 'Kata sandi salah.' };
+            }
+          }
+        } catch (e) { /* ignore */ }
+      }
+
+      // 3. Jika tidak ditemukan di database siswa aktif, periksa apakah akun sedang dalam status pendaftaran (pending / ditolak)
+      const regStr = localStorage.getItem('nexora_user_registrations');
+      if (regStr) {
+        try {
+          const regs: any[] = JSON.parse(regStr);
+          const pendingStudent = regs.find(
+            (r: any) => r.role === 'student' &&
+            (r.username?.toLowerCase() === cleanId || r.identifier_extra?.toLowerCase() === cleanId || r.email?.toLowerCase() === cleanId)
+          );
+          if (pendingStudent) {
+            if (pendingStudent.status === 'pending') {
+              return {
+                success: false,
+                error: 'Pendaftaran akun siswa Anda sedang menunggu persetujuan dari Admin Utama.',
+              };
+            }
+            if (pendingStudent.status === 'rejected') {
+              return {
+                success: false,
+                error: 'Pendaftaran akun siswa Anda telah ditolak oleh Admin Utama. Hubungi pihak sekolah.',
+              };
             }
           }
         } catch (e) { /* ignore */ }
