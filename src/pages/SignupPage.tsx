@@ -158,7 +158,7 @@ export const SignupPage: React.FC = () => {
           onPlaying={() => setVideoLoaded(true)}
         >
           <source
-            src="https://d2ol7oe51mr4n9.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/197f7e27-faac-4bdc-916c-615ac962bf86.mp4"
+            src="/videos/login.mp4"
             type="video/mp4"
           />
         </video>

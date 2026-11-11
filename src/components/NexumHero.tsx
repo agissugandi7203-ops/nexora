@@ -31,10 +31,10 @@ export const NexumHero: React.FC = () => {
 
   return (
     <section className="relative min-h-screen lg:h-screen w-full overflow-hidden font-geist antialiased select-none flex flex-col justify-between pt-28 pb-6">
-      {/* Background Video: Full-bleed, continuous muted loop */}
+      {/* Background Video: Full-bleed, continuous muted loop (Local High-Performance Optimized Video) */}
       <video
         className="absolute inset-0 h-full w-full object-cover"
-        src="https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260803_192301_9231ed6b-c55c-4a48-909c-4ebe11cf2e11.mp4"
+        src="/videos/hero.mp4"
         autoPlay
         loop
         muted
