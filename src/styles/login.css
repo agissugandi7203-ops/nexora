@@ -1,0 +1,169 @@
+/* ==========================================================================
+   SMK MARHAS LOGIN STYLESHEET (Terpisah & Terisolasi dari Dashboard/Landing)
+   ========================================================================== */
+
+.marhas-login-scope {
+  background-color: #f4f7fb;
+  background-image:
+    radial-gradient(at 12% 15%, rgba(250, 204, 21, 0.25) 0px, transparent 45%),
+    radial-gradient(at 88% 18%, rgba(56, 189, 248, 0.25) 0px, transparent 50%),
+    radial-gradient(at 82% 85%, rgba(16, 185, 129, 0.20) 0px, transparent 48%),
+    radial-gradient(at 15% 88%, rgba(249, 115, 22, 0.16) 0px, transparent 45%);
+  color: #0f172a;
+  position: relative;
+  overflow-x: hidden;
+}
+
+/* Grid buku catatan / teknik SMK */
+.marhas-grid-pattern {
+  background-size: 32px 32px;
+  background-image: 
+    linear-gradient(to right, rgba(15, 23, 42, 0.04) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(15, 23, 42, 0.04) 1px, transparent 1px);
+}
+
+/* Kartu Utama Login dengan gaya Ceria & Taktil */
+.marhas-auth-container {
+  background: #ffffff;
+  border: 2.5px solid #0f172a;
+  box-shadow: 0 12px 0 0 #0f172a, 0 25px 50px -12px rgba(15, 23, 42, 0.18);
+  border-radius: 2rem;
+  overflow: hidden;
+}
+
+/* Panel Visual Kiri untuk Siswa (Biru Cerah - Kuning Ceria SMK) */
+.marhas-banner-student {
+  background: linear-gradient(145deg, #1d4ed8 0%, #0284c7 55%, #0ea5e9 100%);
+  position: relative;
+  overflow: hidden;
+}
+
+/* Panel Visual Kiri untuk Guru (Teal Emerald - Biru Akademik) */
+.marhas-banner-teacher {
+  background: linear-gradient(145deg, #0f172a 0%, #1e3a8a 52%, #0284c7 100%);
+  position: relative;
+  overflow: hidden;
+}
+
+/* Ornamen lingkaran dekoratif di dalam banner */
+.marhas-deco-circle {
+  position: absolute;
+  border-radius: 9999px;
+  pointer-events: none;
+}
+
+/* Badge / Stiker Sekolah Mengambang */
+.marhas-sticker {
+  background: #ffffff;
+  border: 2px solid #0f172a;
+  box-shadow: 0 4px 0 0 #0f172a;
+  border-radius: 1rem;
+  color: #0f172a;
+}
+
+.marhas-pill-yellow {
+  background: #facc15;
+  border: 2px solid #0f172a;
+  box-shadow: 0 3px 0 0 #0f172a;
+  color: #0f172a;
+}
+
+.marhas-pill-emerald {
+  background: #34d399;
+  border: 2px solid #0f172a;
+  box-shadow: 0 3px 0 0 #0f172a;
+  color: #0f172a;
+}
+
+.marhas-pill-coral {
+  background: #fb923c;
+  border: 2px solid #0f172a;
+  box-shadow: 0 3px 0 0 #0f172a;
+  color: #0f172a;
+}
+
+/* Input Form Login */
+.marhas-input {
+  width: 100%;
+  background-color: #f8fafc;
+  border: 2px solid #cbd5e1;
+  border-radius: 1rem;
+  color: #0f172a;
+  font-weight: 600;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.marhas-input::placeholder {
+  color: #94a3b8;
+  font-weight: 500;
+}
+
+.marhas-input:focus {
+  outline: none;
+  background-color: #ffffff;
+  border-color: #0f172a;
+  box-shadow: 0 4px 0 0 #facc15;
+  transform: translateY(-1px);
+}
+
+/* Tombol Utama Taktil Ceria */
+.marhas-btn-submit {
+  border: 2px solid #0f172a;
+  box-shadow: 0 5px 0 0 #0f172a;
+  border-radius: 1rem;
+  font-weight: 800;
+  transition: all 0.15s ease;
+}
+
+.marhas-btn-submit:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 7px 0 0 #0f172a;
+}
+
+.marhas-btn-submit:active:not(:disabled) {
+  transform: translateY(3px);
+  box-shadow: 0 2px 0 0 #0f172a;
+}
+
+/* Tab Switcher Siswa / Guru */
+.marhas-role-switcher {
+  background: #f1f5f9;
+  border: 2px solid #0f172a;
+  border-radius: 1rem;
+  padding: 0.35rem;
+}
+
+.marhas-role-tab-active {
+  background: #facc15;
+  color: #0f172a;
+  border: 2px solid #0f172a;
+  box-shadow: 0 2px 0 0 #0f172a;
+  font-weight: 800;
+}
+
+/* Animasi Mengambang Halus */
+@keyframes marhasFloatSlow {
+  0%, 100% {
+    transform: translateY(0px) rotate(0deg);
+  }
+  50% {
+    transform: translateY(-8px) rotate(1.5deg);
+  }
+}
+
+@keyframes marhasFloatReverse {
+  0%, 100% {
+    transform: translateY(0px) rotate(0deg);
+  }
+  50% {
+    transform: translateY(7px) rotate(-1.5deg);
+  }
+}
+
+.animate-marhas-float {
+  animation: marhasFloatSlow 5s ease-in-out infinite;
+}
+
+.animate-marhas-float-reverse {
+  animation: marhasFloatReverse 6s ease-in-out infinite;
+}
