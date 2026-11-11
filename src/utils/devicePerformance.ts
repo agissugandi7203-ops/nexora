@@ -79,14 +79,15 @@ export const evaluateDevicePerformance = (): DeviceSpecInfo => {
     }
   }
 
-  // Keputusan Adaptif untuk Lenis Smooth Scroll:
-  // - HP Kentang: TIDAK diaktifkan (menggunakan scrolling momentum native hardware bawaan HP, 0% patah-patah).
-  // - HP Bagus / Flagship (Tier High): DIAKTIFKAN dengan konfigurasi touchMultiplier halus.
-  // - Komputer / Laptop: DIAKTIFKAN (karena memiliki mouse wheel fisik dan daya CPU memadai).
-  const canRunLenis = !prefersReducedMotion && !saveData && (
-    (!isMobile && tier !== 'low') ||
-    (isMobile && tier === 'high')
-  );
+  // Keputusan untuk Lenis Smooth Scroll:
+  // - SEMUA PERANGKAT MOBILE (HP Apapun / Layar Sentuh / Layar < 1024px): 100% LENIS OFF!
+  //   Mobile menggunakan 100% native hardware momentum scrolling bawaan Android Chrome & iOS Safari
+  //   sehingga 0% stuttering, 0% patah-patah, dan mulus mentok 60-120Hz.
+  // - Komputer / Laptop Desktop (Mouse Wheel): Lenis aktif untuk menghaluskan gerak putar roda mouse.
+  const isTouchDevice = isMobile || (typeof window !== 'undefined' && ('ontouchstart' in window || navigator.maxTouchPoints > 0));
+  const isDesktopScreen = typeof window !== 'undefined' && window.innerWidth >= 1024;
+
+  const canRunLenis = !prefersReducedMotion && !saveData && !isTouchDevice && isDesktopScreen && tier !== 'low';
 
   return {
     isMobile,

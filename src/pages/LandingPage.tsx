@@ -29,14 +29,22 @@ import { BottomNav } from '../components/BottomNav';
  * 10. Bottom Nav
  */
 export const LandingPage: React.FC = () => {
-  // LENIS Smooth Scrolling: Adaptif Berdasarkan Kemampuan Hardware Perangkat
-  // - HP Kentang (Low-End / Mode Hemat Daya): Lenis OFF, scrolling native momentum 60fps tanpa lagging
-  // - HP Bagus (Flagship) & Desktop/Laptop: Lenis ON dengan touchMultiplier yang disesuaikan
+  // LENIS Smooth Scrolling:
+  // - MOBILE / HP APAPUN (Layar sentuh / layar < 1024px): 100% LENIS OFF.
+  //   Menggunakan scrolling native momentum bawaan hardware HP (0% patah-patah, 120Hz mulus instan).
+  // - LAPTOP & DESKTOP (Mouse wheel fisik): Lenis ON untuk memuluskan rotasi roda mouse.
   useEffect(() => {
-    const spec = evaluateDevicePerformance();
+    const isMobileDevice = typeof window !== 'undefined' && (
+      window.innerWidth < 1024 ||
+      /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent || '') ||
+      'ontouchstart' in window ||
+      (navigator.maxTouchPoints && navigator.maxTouchPoints > 0)
+    );
 
-    // 1. HP Kentang / Perangkat Spesifikasi Terbatas: Fallback ke Smooth Scrolling Native
-    if (!spec.canRunLenis) {
+    // 1. SEMUA HP / PERANGKAT MOBILE: Lenis dinonaktifkan total
+    if (isMobileDevice) {
+      delete (window as any).__lenis;
+
       const handleNativeAnchorClick = (e: MouseEvent) => {
         const target = (e.target as HTMLElement).closest('a');
         if (!target) return;
@@ -63,12 +71,12 @@ export const LandingPage: React.FC = () => {
       };
     }
 
-    // 2. HP Flagship / Bagus & Desktop: Inisialisasi Lenis Smooth Scroll adaptif
+    // 2. HANYA LAPTOP / DESKTOP (Mouse Wheel): Lenis Smooth Scroll
     const lenis = new Lenis({
-      duration: spec.isMobile ? 1.0 : 1.2,
+      duration: 1.2,
       easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
       smoothWheel: true,
-      touchMultiplier: spec.isMobile ? 1.2 : 1.5,
+      syncTouch: false,
     });
 
     (window as any).__lenis = lenis;
