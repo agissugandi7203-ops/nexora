@@ -122,35 +122,35 @@ export const NexumNavbar: React.FC = () => {
           Menggunakan dark obsidian glass (bg-[#0B0C10]/90 backdrop-blur-2xl)
           sehingga 100% SELALU TERLIHAT & KONTRAS baik di video gelap maupun section putih!
          ==================================================================== */}
-      <header className="fixed top-0 left-0 right-0 z-[100] px-4 sm:px-6 lg:px-8 py-3.5 flex items-center justify-between pointer-events-none transition-all duration-300">
+      <header className="fixed top-0 left-0 right-0 z-[100] px-4 sm:px-6 lg:px-8 py-3.5 sm:py-4 flex items-center justify-between pointer-events-none transition-all duration-300">
         {/* Left: Logo Capsule */}
         <a
           href="#hero"
           onClick={(e) => handleNavClick(e, '#hero')}
-          className={`flex items-center gap-2.5 rounded-full px-2.5 sm:px-4 py-2 border transition-all duration-300 pointer-events-auto shadow-md group ${
+          className={`flex items-center gap-3 rounded-full px-3.5 sm:px-5 py-2 sm:py-2.5 border transition-all duration-300 pointer-events-auto shadow-md group ${
             isScrolled
               ? 'bg-[#0B0C10]/95 backdrop-blur-2xl border-white/20 shadow-[0_10px_35px_rgba(0,0,0,0.4)]'
               : 'bg-[#0B0C10]/85 backdrop-blur-xl border-white/20 shadow-[0_4px_20px_rgba(0,0,0,0.3)]'
           }`}
           aria-label="Marhas LMS Home"
         >
-          <div className="w-7 h-7 rounded-lg bg-white/15 backdrop-blur-md border border-white/20 flex items-center justify-center group-hover:scale-105 transition-transform flex-shrink-0">
+          <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-white/15 backdrop-blur-md border border-white/20 flex items-center justify-center group-hover:scale-105 transition-transform flex-shrink-0 shadow-inner">
             <svg
-              className="h-4 w-4 fill-white"
+              className="h-5 w-5 sm:h-5.5 sm:w-5.5 fill-white"
               viewBox="0 0 256 256"
               aria-hidden="true"
             >
               <path d="M 128 128 C 128 198.692 70.692 256 0 256 C 0 185.308 57.308 128 128 128 Z M 128 128 C 198.692 128 256 185.308 256 256 C 185.308 256 128 198.692 128 128 Z M 0 0 C 70.692 0 128 57.308 128 128 C 57.308 128 0 70.692 0 0 Z M 256 0 C 256 70.692 198.692 128 128 128 C 128 57.308 185.308 0 256 0 Z" />
             </svg>
           </div>
-          <span className="hidden sm:inline text-base sm:text-lg font-semibold tracking-tight text-white transition-colors duration-200">
+          <span className="text-base sm:text-xl font-bold tracking-tight text-white transition-colors duration-200">
             Marhas LMS
           </span>
         </a>
 
         {/* Center: Desktop Navigation Links Pill (5 items sesuai hierarki) */}
         <div
-          className={`hidden md:flex items-center gap-1 rounded-full px-3 py-1.5 border transition-all duration-300 pointer-events-auto shadow-md ${
+          className={`hidden md:flex items-center gap-1.5 rounded-full px-4 py-2 border transition-all duration-300 pointer-events-auto shadow-md ${
             isScrolled
               ? 'bg-[#0B0C10]/95 backdrop-blur-2xl border-white/20 shadow-[0_10px_35px_rgba(0,0,0,0.4)]'
               : 'bg-[#0B0C10]/85 backdrop-blur-xl border-white/20 shadow-[0_4px_20px_rgba(0,0,0,0.3)]'
@@ -161,7 +161,7 @@ export const NexumNavbar: React.FC = () => {
               key={item.name}
               href={item.href}
               onClick={(e) => handleNavClick(e, item.href)}
-              className="flex items-center gap-1 rounded-full px-3.5 py-1.5 text-sm font-medium text-white/90 hover:text-white hover:bg-white/15 transition-all"
+              className="flex items-center gap-1 rounded-full px-4 py-2 text-[15px] font-medium text-white/90 hover:text-white hover:bg-white/15 transition-all"
             >
               <span>{item.name}</span>
             </a>
@@ -170,7 +170,7 @@ export const NexumNavbar: React.FC = () => {
 
         {/* Right: Action Capsule (Get started + Mobile Toggle) */}
         <div
-          className={`flex items-center gap-2 rounded-full p-1 sm:px-2 sm:py-1 border transition-all duration-300 pointer-events-auto shadow-md ${
+          className={`flex items-center gap-2 rounded-full p-1.5 sm:px-2.5 sm:py-1.5 border transition-all duration-300 pointer-events-auto shadow-md ${
             isScrolled
               ? 'bg-[#0B0C10]/95 backdrop-blur-2xl border-white/20 shadow-[0_10px_35px_rgba(0,0,0,0.4)]'
               : 'bg-[#0B0C10]/85 backdrop-blur-xl border-white/20 shadow-[0_4px_20px_rgba(0,0,0,0.3)]'
@@ -179,7 +179,7 @@ export const NexumNavbar: React.FC = () => {
           <button
             type="button"
             onClick={handleGetStarted}
-            className="hidden md:flex items-center justify-center rounded-full px-4 py-1.5 text-sm font-semibold text-black bg-white hover:bg-slate-100 shadow-sm transition-all hover:scale-105 active:scale-95 cursor-pointer"
+            className="hidden md:flex items-center justify-center rounded-full px-5 py-2.5 text-[15px] font-semibold text-black bg-white hover:bg-slate-100 shadow-sm transition-all hover:scale-105 active:scale-95 cursor-pointer"
           >
             Get started
           </button>
@@ -189,15 +189,15 @@ export const NexumNavbar: React.FC = () => {
             type="button"
             aria-label={isMenuOpen ? 'Close menu' : 'Open menu'}
             onClick={() => setIsMenuOpen((prev) => !prev)}
-            className="relative flex h-8 w-8 items-center justify-center rounded-full bg-white/15 backdrop-blur-lg text-white border border-white/20 transition-all md:hidden focus:outline-none"
+            className="relative flex h-10 w-10 items-center justify-center rounded-full bg-white/15 backdrop-blur-lg text-white border border-white/20 transition-all md:hidden focus:outline-none"
           >
             <Menu
-              className={`absolute h-4 w-4 transition-all duration-300 ${
+              className={`absolute h-5 w-5 transition-all duration-300 ${
                 isMenuOpen ? 'rotate-90 scale-0 opacity-0' : 'rotate-0 scale-100 opacity-100'
               }`}
             />
             <X
-              className={`absolute h-4 w-4 transition-all duration-300 ${
+              className={`absolute h-5 w-5 transition-all duration-300 ${
                 isMenuOpen ? 'rotate-0 scale-100 opacity-100 text-white' : '-rotate-90 scale-0 opacity-0'
               }`}
             />

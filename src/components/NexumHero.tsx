@@ -30,7 +30,7 @@ export const NexumHero: React.FC = () => {
   };
 
   return (
-    <section className="relative min-h-screen lg:h-screen w-full overflow-hidden font-geist antialiased select-none flex flex-col justify-between pt-28 pb-6">
+    <section className="relative min-h-screen lg:h-screen w-full overflow-hidden font-geist antialiased select-none flex flex-col justify-between pt-32 sm:pt-36 pb-6">
       {/* Background Video: Full-bleed, continuous muted loop (Local High-Performance Optimized Video) */}
       <video
         className="absolute inset-0 h-full w-full object-cover"
