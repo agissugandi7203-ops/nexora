@@ -27,6 +27,7 @@ export const InfiniteMarquee: React.FC = () => {
               src={src}
               alt={`Studio showcase project ${(index % 8) + 1}`}
               className="h-[280px] md:h-[500px] w-auto max-w-none object-cover rounded-2xl block"
+              loading="lazy"
               decoding="async"
               style={{ backfaceVisibility: 'hidden', WebkitBackfaceVisibility: 'hidden' }}
             />

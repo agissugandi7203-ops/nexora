@@ -78,7 +78,7 @@ export const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
       )}
 
       <aside
-        className={`dash-sidebar ${isExpanded ? 'is-expanded' : 'is-minimized'} ${
+        className={`dash-sidebar ${isExpanded || mobileOpen ? 'is-expanded' : 'is-minimized'} ${
           mobileOpen ? 'is-mobile-open' : ''
         }`}
         aria-label="Sidebar Navigasi LMS"
@@ -98,29 +98,43 @@ export const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
           )}
         </button>
 
-        {/* Top: Brand Logo */}
+        {/* Top: Brand Logo & Mobile Close Action */}
         <div>
-          <Link
-            to="/"
-            className="sidebar-brand"
-            title="Kembali ke Beranda"
-            onClick={onCloseMobile}
-          >
-            {/* Logo X / Clover Geometris Pengganti Huruf K */}
-            <div className="sidebar-brand__mark">
-              <svg
-                className="w-5 h-5 fill-white"
-                viewBox="0 0 256 256"
-                aria-hidden="true"
+          <div className="flex items-center justify-between mb-4">
+            <Link
+              to="/"
+              className="sidebar-brand !mb-0 flex-1"
+              title="Kembali ke Beranda"
+              onClick={onCloseMobile}
+            >
+              {/* Logo X / Clover Geometris */}
+              <div className="sidebar-brand__mark">
+                <svg
+                  className="w-5 h-5 fill-white"
+                  viewBox="0 0 256 256"
+                  aria-hidden="true"
+                >
+                  <path d="M 128 128 C 128 198.692 70.692 256 0 256 C 0 185.308 57.308 128 128 128 Z M 128 128 C 198.692 128 256 185.308 256 256 C 185.308 256 128 198.692 128 128 Z M 0 0 C 70.692 0 128 57.308 128 128 C 57.308 128 0 70.692 0 0 Z M 256 0 C 256 70.692 198.692 128 128 128 C 128 57.308 185.308 0 256 0 Z" />
+                </svg>
+              </div>
+              <div className="sidebar-brand__text flex flex-col">
+                <span className="sidebar-brand__name">{brandName}</span>
+                <span className="sidebar-brand__tag">{brandTag}</span>
+              </div>
+            </Link>
+
+            {/* Tombol Tutup Khusus Mobile Drawer */}
+            {mobileOpen && (
+              <button
+                type="button"
+                onClick={onCloseMobile}
+                className="md:hidden w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center transition-colors ml-2 flex-shrink-0 cursor-pointer"
+                aria-label="Tutup menu"
               >
-                <path d="M 128 128 C 128 198.692 70.692 256 0 256 C 0 185.308 57.308 128 128 128 Z M 128 128 C 198.692 128 256 185.308 256 256 C 185.308 256 128 198.692 128 128 Z M 0 0 C 70.692 0 128 57.308 128 128 C 57.308 128 0 70.692 0 0 Z M 256 0 C 256 70.692 198.692 128 128 128 C 128 57.308 185.308 0 256 0 Z" />
-              </svg>
-            </div>
-            <div className="sidebar-brand__text hidden sm:flex">
-              <span className="sidebar-brand__name">{brandName}</span>
-              <span className="sidebar-brand__tag">{brandTag}</span>
-            </div>
-          </Link>
+                <ChevronLeft className="w-4 h-4" />
+              </button>
+            )}
+          </div>
 
           {/* Navigation Section */}
           <nav className="sidebar-section" aria-label="Menu Utama">

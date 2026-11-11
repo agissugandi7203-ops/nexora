@@ -39,6 +39,7 @@ export const NexumHero: React.FC = () => {
         loop
         muted
         playsInline
+        preload="metadata"
       />
 
       {/* Dark overlay for optimal text contrast */}

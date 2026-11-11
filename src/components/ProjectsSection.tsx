@@ -55,6 +55,7 @@ const ProjectCard: React.FC<{ project: Project; index: number }> = ({ project, i
           alt={project.alt}
           className="w-full h-auto max-h-[700px] object-cover rounded-2xl transition-transform duration-500 group-hover:scale-[1.01] block"
           loading="lazy"
+          decoding="async"
           style={{ backfaceVisibility: 'hidden', WebkitBackfaceVisibility: 'hidden' }}
         />
       </div>

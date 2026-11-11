@@ -12,12 +12,16 @@ export default defineConfig({
   },
   build: {
     sourcemap: false,
+    chunkSizeWarningLimit: 1000,
+    cssCodeSplit: true,
     rollupOptions: {
       output: {
         manualChunks: {
           vendor: ['react', 'react-dom', 'react-router-dom'],
           supabase: ['@supabase/supabase-js'],
           ui: ['lucide-react', 'clsx', 'tailwind-merge'],
+          motion: ['motion'],
+          lenis: ['lenis'],
         },
       },
     },
