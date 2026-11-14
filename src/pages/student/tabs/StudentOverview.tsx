@@ -7,7 +7,10 @@ import {
   Award,
   ArrowRight,
   School,
-  FileText
+  FileText,
+  Trophy,
+  Sparkles,
+  User
 } from 'lucide-react';
 import { useAuth } from '../../../context/AuthContext';
 import { useData } from '../../../context/DataContext';
@@ -32,16 +35,18 @@ export const StudentOverview: React.FC<StudentOverviewProps> = ({ onNavigate, on
     submissions,
     grades,
     students,
+    isMaterialCompleted,
   } = useData();
 
   const [searchQuery, setSearchQuery] = useState('');
   const studentClass = classes.find((c) => c.id === currentStudent?.class_id);
+  const studentKey = currentStudent?.id || currentUser?.id || 'guest';
 
   // Submissions by this student
   const mySubmissions = submissions.filter((s) => s.student_id === currentStudent?.id);
   const mySubmittedAsgIds = mySubmissions.map((s) => s.assignment_id);
 
-  // Class assignments
+  // Class assignments (mendukung class_ids multi-kelas maupun class_id tunggal)
   const classAssignments = assignments.filter((a) => {
     if (a.is_active === false) return false;
     let allowedIds: string[] = [];
@@ -49,6 +54,11 @@ export const StudentOverview: React.FC<StudentOverviewProps> = ({ onNavigate, on
       allowedIds = a.class_ids;
     } else if (a.class_id) {
       allowedIds = [a.class_id];
+    } else {
+      const sub = subjects.find((s) => s.id === a.subject_id);
+      if (sub?.class_ids && sub.class_ids.length > 0) {
+        allowedIds = sub.class_ids;
+      }
     }
     if (allowedIds.length === 0) return true;
     if (!currentStudent?.class_id) return false;
@@ -56,6 +66,7 @@ export const StudentOverview: React.FC<StudentOverviewProps> = ({ onNavigate, on
   });
 
   const activeAssignments = classAssignments.filter((a) => !mySubmittedAsgIds.includes(a.id));
+  const completedAssignments = classAssignments.filter((a) => mySubmittedAsgIds.includes(a.id));
   const myGrades = grades.filter((g) => g.student_id === currentStudent?.id && g.is_published);
 
   // Filter materials for student's class
@@ -63,6 +74,13 @@ export const StudentOverview: React.FC<StudentOverviewProps> = ({ onNavigate, on
     if (currentStudent?.class_id && m.class_id && m.class_id !== currentStudent.class_id) return false;
     return m.is_published;
   });
+  const myCompletedMaterialsCount = myMaterials.filter((m) => isMaterialCompleted(m.id, studentKey)).length;
+
+  // Gamified XP & Level calculation
+  const studentXP = (myCompletedMaterialsCount * 50) + (completedAssignments.length * 100) + (myGrades.length * 30);
+  const studentLevel = Math.max(1, Math.floor(studentXP / 250) + 1);
+  const xpInCurrentLevel = studentXP % 250;
+  const xpProgressPercent = Math.min(100, Math.round((xpInCurrentLevel / 250) * 100));
 
   const firstName = currentUser?.full_name ? currentUser.full_name.split(' ')[0] : 'Siswa';
 
@@ -216,6 +234,61 @@ export const StudentOverview: React.FC<StudentOverviewProps> = ({ onNavigate, on
           students={students}
           onNavigateClasses={() => onNavigate('subjects')}
         />
+      </div>
+
+      {/* 5. Gamifikasi Level & XP Belajar Siswa */}
+      <div className="bg-gradient-to-r from-[#3b5bf5] via-indigo-600 to-violet-600 rounded-3xl p-6 text-white shadow-lg shadow-blue-500/15 flex flex-col md:flex-row md:items-center justify-between gap-5">
+        <div className="space-y-2 flex-1">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/15 text-[11px] font-extrabold tracking-wide">
+            <Trophy className="w-3.5 h-3.5 text-amber-300" />
+            <span>Level {studentLevel} • {studentXP.toLocaleString('id-ID')} XP</span>
+          </div>
+          <h4 className="text-lg font-extrabold tracking-tight">
+            Progres Pencapaian Belajar {firstName}
+          </h4>
+          <p className="text-xs text-blue-100 font-medium">
+            {myCompletedMaterialsCount} materi tuntas (+50 XP/materi) • {completedAssignments.length} tugas dikerjakan (+100 XP/tugas) • {myGrades.length} nilai terbit (+30 XP)
+          </p>
+          <div className="pt-1 max-w-md">
+            <div className="flex items-center justify-between text-[11px] font-bold text-blue-100 mb-1">
+              <span>Menuju Level {studentLevel + 1}</span>
+              <span>{xpInCurrentLevel} / 250 XP ({xpProgressPercent}%)</span>
+            </div>
+            <div className="w-full h-2.5 bg-white/20 rounded-full overflow-hidden">
+              <div
+                className="h-full bg-amber-300 rounded-full transition-all duration-500"
+                style={{ width: `${Math.max(5, xpProgressPercent)}%` }}
+              />
+            </div>
+          </div>
+        </div>
+
+        <div className="flex flex-wrap gap-2.5 shrink-0">
+          <button
+            type="button"
+            onClick={() => onNavigate('assignments')}
+            className="px-4 py-2.5 rounded-2xl bg-white text-[#3b5bf5] hover:bg-blue-50 text-xs font-extrabold shadow-sm inline-flex items-center gap-1.5 cursor-pointer"
+          >
+            <Sparkles className="w-3.5 h-3.5" />
+            <span>Kerjakan Tugas</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => onNavigate('materials')}
+            className="px-4 py-2.5 rounded-2xl bg-white/15 hover:bg-white/25 text-white text-xs font-bold inline-flex items-center gap-1.5 cursor-pointer"
+          >
+            <BookOpen className="w-3.5 h-3.5" />
+            <span>Buka Materi</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => onNavigate('profile')}
+            className="px-4 py-2.5 rounded-2xl bg-white/15 hover:bg-white/25 text-white text-xs font-bold inline-flex items-center gap-1.5 cursor-pointer"
+          >
+            <User className="w-3.5 h-3.5" />
+            <span>Profil &amp; Password</span>
+          </button>
+        </div>
       </div>
     </div>
   );

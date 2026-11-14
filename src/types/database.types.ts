@@ -237,6 +237,7 @@ export interface SiteSettings {
   id: number;
   site_name: string;
   tagline: string;
+  browser_title?: string | null;
   logo_url: string | null;
   teacher_name: string;
   teacher_bio: string;

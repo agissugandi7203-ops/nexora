@@ -58,12 +58,18 @@ export const StudentLayout: React.FC = () => {
   // Active tasks calculation
   const studentSubmissions = submissions.filter((s) => s.student_id === currentStudent?.id);
   const submittedAsgIds = studentSubmissions.map((s) => s.assignment_id);
-  const activeAssignmentsCount = assignments.filter(
-    (a) =>
-      a.is_active !== false &&
-      (!currentStudent?.class_id || !a.class_id || a.class_id === currentStudent.class_id) &&
-      !submittedAsgIds.includes(a.id)
-  ).length;
+  const activeAssignmentsCount = assignments.filter((a) => {
+    if (a.is_active === false) return false;
+    if (submittedAsgIds.includes(a.id)) return false;
+    const allowedIds =
+      Array.isArray(a.class_ids) && a.class_ids.length > 0
+        ? a.class_ids
+        : a.class_id
+        ? [a.class_id]
+        : [];
+    if (allowedIds.length === 0) return true;
+    return Boolean(currentStudent?.class_id && allowedIds.includes(currentStudent.class_id));
+  }).length;
 
   const navGroups: NavGroup[] = [
     {

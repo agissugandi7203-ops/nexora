@@ -16,12 +16,16 @@ import {
 } from 'lucide-react';
 import { useData } from '../../../context/DataContext';
 import { Student } from '../../../types/database.types';
+import { TablePaginationBar, paginateArray } from '../../../components/TablePaginationBar';
+import { CustomCombobox } from '../../../components/CustomCombobox';
 
 export const AdminStudents: React.FC = () => {
   const { students, classes, addStudent, updateStudent, deleteStudent } = useData();
 
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedClassFilter, setSelectedClassFilter] = useState('all');
+  const [pageSize, setPageSize] = useState<number>(10);
+  const [currentPage, setCurrentPage] = useState<number>(1);
 
   // Modal states
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -59,6 +63,8 @@ export const AdminStudents: React.FC = () => {
 
     return matchesSearch && matchesClass;
   });
+
+  const paginatedStudents = paginateArray(filteredStudents, pageSize, currentPage);
 
   const handleCreateStudent = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -167,28 +173,46 @@ export const AdminStudents: React.FC = () => {
           <input
             type="text"
             value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
+            onChange={(e) => {
+              setSearchTerm(e.target.value);
+              setCurrentPage(1);
+            }}
             placeholder="Cari nama, NISN, atau username..."
             className="w-full pl-10 pr-4 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:border-[#3b5bf5] focus:bg-white"
           />
         </div>
 
-        <div className="flex items-center gap-2 w-full sm:w-auto">
-          <Filter className="w-4 h-4 text-slate-400" />
-          <select
+        <div className="w-full sm:w-64">
+          <CustomCombobox
+            icon={<Filter className="w-4 h-4" />}
+            prefixLabel="Kelas:"
             value={selectedClassFilter}
-            onChange={(e) => setSelectedClassFilter(e.target.value)}
-            className="w-full sm:w-auto px-3.5 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs font-semibold text-slate-700 focus:outline-none focus:border-[#3b5bf5] focus:bg-white"
-          >
-            <option value="all">Semua Kelas ({students.length})</option>
-            {classes.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.name}
-              </option>
-            ))}
-          </select>
+            onChange={(val) => {
+              setSelectedClassFilter(val);
+              setCurrentPage(1);
+            }}
+            options={[
+              { value: 'all', label: 'Semua Kelas', badge: students.length },
+              ...classes.map((c) => ({
+                value: c.id,
+                label: c.name,
+                badge: students.filter((s) => s.class_id === c.id).length,
+                description: `Tingkat ${c.level}`,
+              })),
+            ]}
+          />
         </div>
       </div>
+
+      {/* Filter Banyaknya Data yang Ditampilkan */}
+      <TablePaginationBar
+        totalItems={filteredStudents.length}
+        pageSize={pageSize}
+        currentPage={currentPage}
+        onPageSizeChange={setPageSize}
+        onPageChange={setCurrentPage}
+        itemLabel="siswa"
+      />
 
       {/* Student List Table */}
       <div className="bg-white rounded-3xl border border-slate-200/80 shadow-sm overflow-hidden">
@@ -212,7 +236,7 @@ export const AdminStudents: React.FC = () => {
                   </td>
                 </tr>
               ) : (
-                filteredStudents.map((st) => (
+                paginatedStudents.map((st) => (
                   <tr key={st.id} className="hover:bg-slate-50/60 transition-colors">
                     <td className="py-4 px-5">
                       <div className="flex items-center gap-3">

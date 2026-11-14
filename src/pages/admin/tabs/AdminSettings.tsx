@@ -32,6 +32,9 @@ export const AdminSettings: React.FC = () => {
   const [formData, setFormData] = useState({
     site_name: siteSettings.site_name,
     tagline: siteSettings.tagline,
+    browser_title:
+      siteSettings.browser_title || 'NEXORA × SMK MARHAS — Platform E-Learning Terpadu',
+    logo_url: siteSettings.logo_url || '',
     teacher_name: siteSettings.teacher_name,
     teacher_bio: siteSettings.teacher_bio,
     teacher_photo_url: siteSettings.teacher_photo_url || '',
@@ -49,12 +52,111 @@ export const AdminSettings: React.FC = () => {
   });
 
   const [isUploading, setIsUploading] = useState(false);
+  const [isUploadingLogo, setIsUploadingLogo] = useState(false);
   const [notification, setNotification] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const logoInputRef = useRef<HTMLInputElement | null>(null);
 
   const showNotif = (msg: string) => {
     setNotification(msg);
     setTimeout(() => setNotification(null), 3500);
+  };
+
+  // Fungsi Upload Logo Website dari Perangkat (PNG/JPG/SVG/WebP)
+  const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      alert('Mohon pilih file gambar logo yang valid (PNG, JPG, SVG, WebP).');
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      alert('Ukuran file logo terlalu besar. Maksimal 5MB.');
+      return;
+    }
+
+    setIsUploadingLogo(true);
+
+    try {
+      let uploadedUrl: string | null = null;
+      if (isSupabaseConfigured) {
+        try {
+          const fileExt = file.name.split('.').pop() || 'png';
+          const fileName = `site_logo_${Date.now()}.${fileExt}`;
+          const filePath = `logos/${fileName}`;
+
+          const { error: uploadErr } = await supabase.storage
+            .from('nexora-files')
+            .upload(filePath, file, { cacheControl: '3600', upsert: true });
+
+          if (!uploadErr) {
+            const { data: publicUrlData } = supabase.storage
+              .from('nexora-files')
+              .getPublicUrl(filePath);
+
+            if (publicUrlData?.publicUrl) {
+              uploadedUrl = publicUrlData.publicUrl;
+            }
+          }
+        } catch (storageErr) {
+          console.warn('Logo storage upload notice (falling back to Base64):', storageErr);
+        }
+      }
+
+      if (!uploadedUrl) {
+        uploadedUrl = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = (event) => {
+            const resultStr = event.target?.result as string;
+            if (file.type === 'image/svg+xml') {
+              resolve(resultStr);
+              return;
+            }
+            const img = new Image();
+            img.onload = () => {
+              const canvas = document.createElement('canvas');
+              let width = img.width;
+              let height = img.height;
+              const maxDim = 400;
+              if (width > maxDim || height > maxDim) {
+                if (width > height) {
+                  height = Math.round((height * maxDim) / width);
+                  width = maxDim;
+                } else {
+                  width = Math.round((width * maxDim) / height);
+                  height = maxDim;
+                }
+              }
+              canvas.width = width;
+              canvas.height = height;
+              const ctx = canvas.getContext('2d');
+              if (ctx) {
+                ctx.drawImage(img, 0, 0, width, height);
+                resolve(canvas.toDataURL('image/png', 0.92));
+              } else {
+                resolve(resultStr);
+              }
+            };
+            img.onerror = () => resolve(resultStr);
+            img.src = resultStr;
+          };
+          reader.onerror = reject;
+          reader.readAsDataURL(file);
+        });
+      }
+
+      setFormData(prev => ({ ...prev, logo_url: uploadedUrl || '' }));
+      await updateSiteSettings({ logo_url: uploadedUrl || null });
+      showNotif('Logo website berhasil diunggah dan langsung diterapkan!');
+    } catch (err: any) {
+      console.error('Error uploading logo:', err);
+      alert('Gagal memproses logo: ' + (err.message || 'Terjadi kesalahan'));
+    } finally {
+      setIsUploadingLogo(false);
+      if (logoInputRef.current) logoInputRef.current.value = '';
+    }
   };
 
   // Fungsi Upload Foto Manual dari Perangkat
@@ -247,6 +349,68 @@ export const AdminSettings: React.FC = () => {
                 onChange={(e) => setFormData({ ...formData, tagline: e.target.value })}
                 className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-800 focus:outline-none focus:border-[#3b5bf5] focus:bg-white"
               />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-xs font-bold text-slate-700 mb-1.5">
+              Judul Tab Browser (Browser Title)
+            </label>
+            <input
+              type="text"
+              value={formData.browser_title}
+              onChange={(e) => setFormData({ ...formData, browser_title: e.target.value })}
+              placeholder="NEXORA × SMK MARHAS — Platform E-Learning Terpadu"
+              className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-800 focus:outline-none focus:border-[#3b5bf5] focus:bg-white"
+            />
+          </div>
+
+          {/* Upload Logo Website & Favicon */}
+          <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 flex flex-col sm:flex-row items-center gap-4">
+            <div className="w-16 h-16 rounded-2xl overflow-hidden border border-slate-200 bg-white flex items-center justify-center shrink-0">
+              {formData.logo_url ? (
+                <img src={formData.logo_url} alt="Logo Website" className="w-full h-full object-contain p-1.5" />
+              ) : (
+                <ImageIcon className="w-6 h-6 text-slate-400" />
+              )}
+            </div>
+            <div className="flex-1 space-y-1.5 text-center sm:text-left">
+              <p className="text-xs font-bold text-slate-900">Logo Website &amp; Favicon Browser</p>
+              <p className="text-[11px] text-slate-500">
+                Unggah logo sekolah / platform (PNG, JPG, SVG, WebP) untuk favicon tab browser &amp; branding.
+              </p>
+              <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2 pt-1">
+                <input
+                  type="file"
+                  ref={logoInputRef}
+                  accept="image/png, image/jpeg, image/svg+xml, image/webp"
+                  onChange={handleLogoUpload}
+                  className="hidden"
+                />
+                <button
+                  type="button"
+                  disabled={isUploadingLogo}
+                  onClick={() => logoInputRef.current?.click()}
+                  className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#3b5bf5] hover:bg-blue-600 text-white text-xs font-bold shadow-sm transition-all cursor-pointer"
+                >
+                  <Upload className="w-3.5 h-3.5" />
+                  <span>{isUploadingLogo ? 'Mengunggah...' : 'Pilih & Upload Logo'}</span>
+                </button>
+                {formData.logo_url && (
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      setFormData(prev => ({ ...prev, logo_url: '' }));
+                      await updateSiteSettings({ logo_url: null });
+                      showNotif('Logo custom dihapus, kembali ke logo default.');
+                    }}
+                    className="inline-flex items-center gap-1 px-3 py-2 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-600 text-xs font-bold transition-all cursor-pointer"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                    <span>Reset Logo</span>
+                  </button>
+                )}
+              </div>
             </div>
           </div>
         </div>

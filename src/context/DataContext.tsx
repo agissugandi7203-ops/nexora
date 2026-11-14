@@ -7,6 +7,7 @@ import {
   Assignment,
   Student,
   Submission,
+  SubmissionAnswer,
   Grade,
   Announcement,
   SiteSettings,
@@ -121,10 +122,90 @@ export const decodeAssignmentDescription = (
   };
 };
 
+// Helper: Encode & Decode Jawaban Siswa per Soal (termasuk Esai) di dalam student_notes agar 100% tersimpan ke Guru
+export const encodeSubmissionNotes = (
+  cleanNotes?: string | null,
+  answersList?: SubmissionAnswer[]
+): string | null => {
+  const cleaned = (cleanNotes || '').replace(/^\[JAWABAN_JSON:[^\]]+\]\s*/, '').trim();
+  if (Array.isArray(answersList) && answersList.length > 0) {
+    try {
+      const compact = answersList.map(a => ({
+        id: a.id,
+        submission_id: a.submission_id,
+        question_id: a.question_id,
+        selected_option_id: a.selected_option_id || null,
+        answer_text: a.answer_text || null,
+        score: a.score ?? null,
+      }));
+      const encoded = encodeURIComponent(JSON.stringify(compact));
+      return `[JAWABAN_JSON:${encoded}] ${cleaned}`.trim();
+    } catch (e) {
+      return cleaned || null;
+    }
+  }
+  return cleaned || null;
+};
+
+export const decodeSubmissionNotes = (
+  rawNotes?: string | null,
+  dbSubAnswers?: any[],
+  cachedAnswers?: SubmissionAnswer[]
+): { student_notes: string | null; answers: SubmissionAnswer[] } => {
+  let text = rawNotes || '';
+  let parsedAnswers: SubmissionAnswer[] = [];
+
+  const match = text.match(/^\[JAWABAN_JSON:([^\]]+)\]\s*([\s\S]*)$/);
+  if (match) {
+    try {
+      const decodedJson = JSON.parse(decodeURIComponent(match[1]));
+      if (Array.isArray(decodedJson)) {
+        parsedAnswers = decodedJson.map((item: any) => ({
+          id: item.id || generateUUID(),
+          submission_id: item.submission_id || '',
+          question_id: item.question_id || '',
+          selected_option_id: item.selected_option_id || null,
+          answer_text: item.answer_text ?? item.student_answer_text ?? null,
+          file_url: item.file_url || null,
+          score: item.score ?? null,
+          teacher_comment: item.teacher_comment || null,
+          created_at: item.created_at || new Date().toISOString(),
+        }));
+      }
+    } catch (e) {
+      // ignore parse error
+    }
+    text = (match[2] || '').trim();
+  }
+
+  // Merge or fallback to relational submission_answers from DB if present
+  if (Array.isArray(dbSubAnswers) && dbSubAnswers.length > 0) {
+    parsedAnswers = dbSubAnswers.map((item: any) => ({
+      id: item.id || generateUUID(),
+      submission_id: item.submission_id || '',
+      question_id: item.question_id || '',
+      selected_option_id: item.selected_option_id || null,
+      answer_text: item.student_answer_text ?? item.answer_text ?? null,
+      file_url: item.file_url || null,
+      score: item.score !== undefined && item.score !== null ? Number(item.score) : null,
+      teacher_comment: item.teacher_comment || null,
+      created_at: item.created_at || new Date().toISOString(),
+    }));
+  } else if (parsedAnswers.length === 0 && Array.isArray(cachedAnswers) && cachedAnswers.length > 0) {
+    parsedAnswers = cachedAnswers;
+  }
+
+  return {
+    student_notes: text || null,
+    answers: parsedAnswers,
+  };
+};
+
 const defaultSiteSettings: SiteSettings = {
   id: 1,
   site_name: 'NEXORA',
   tagline: 'Learn Beyond Limits.',
+  browser_title: 'NEXORA × SMK MARHAS — Platform E-Learning Terpadu',
   logo_url: null,
   teacher_name: 'Ilham Lesmana',
   teacher_bio: 'Senior Educator & Technology Specialist berkomitmen menghadirkan metode belajar modern, interaktif, dan terstruktur untuk membimbing siswa mencapai potensi akademik terbaik.',
@@ -200,6 +281,13 @@ interface DataContextType {
     feedback: string, 
     itemScores?: Record<string, { score: number; comment?: string }>
   ) => Promise<{ success: boolean; error?: string }>;
+  gradeStudentAssignment: (
+    studentId: string,
+    assignmentId: string,
+    totalScore: number,
+    feedback: string
+  ) => Promise<{ success: boolean; error?: string }>;
+  deleteSubmission: (submissionId: string) => Promise<{ success: boolean; error?: string }>;
 
   grades: Grade[];
   announcements: Announcement[];
@@ -356,9 +444,28 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [supabaseStatus, setSupabaseStatus] = useState<'connected' | 'error' | 'disconnected'>('disconnected');
   const [supabaseError, setSupabaseError] = useState<string | null>(null);
 
-  // Sync to LocalStorage
+  // Sync to LocalStorage, Dynamic Browser Tab Title & Favicon
   useEffect(() => {
     localStorage.setItem('nexora_settings', JSON.stringify(siteSettings));
+    if (typeof document !== 'undefined') {
+      const activeTitle =
+        siteSettings.browser_title && siteSettings.browser_title.trim().length > 0
+          ? siteSettings.browser_title.trim()
+          : `${siteSettings.site_name || 'NEXORA'} — ${siteSettings.tagline || 'Platform E-Learning Terpadu'}`;
+      document.title = activeTitle;
+
+      const favicon = document.querySelector("link[rel~='icon']") as HTMLLinkElement | null;
+      if (siteSettings.logo_url) {
+        if (favicon) {
+          favicon.href = siteSettings.logo_url;
+        } else {
+          const newFavicon = document.createElement('link');
+          newFavicon.rel = 'icon';
+          newFavicon.href = siteSettings.logo_url;
+          document.head.appendChild(newFavicon);
+        }
+      }
+    }
   }, [siteSettings]);
 
   useEffect(() => {
@@ -430,7 +537,24 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setSupabaseStatus('connected');
 
       if (dbSettings) {
-        setSiteSettings(prev => ({ ...prev, ...dbSettings }));
+        const localLogoOverride = localStorage.getItem('nexora_logo_url');
+        const localBrowserTitle = localStorage.getItem('nexora_browser_title');
+        setSiteSettings(prev => ({
+          ...prev,
+          ...dbSettings,
+          logo_url:
+            dbSettings.logo_url !== undefined && dbSettings.logo_url !== null
+              ? dbSettings.logo_url
+              : localLogoOverride !== null
+                ? (localLogoOverride || null)
+                : prev.logo_url,
+          browser_title:
+            dbSettings.browser_title !== undefined && dbSettings.browser_title !== null && dbSettings.browser_title !== ''
+              ? dbSettings.browser_title
+              : localBrowserTitle !== null && localBrowserTitle !== ''
+                ? localBrowserTitle
+                : (prev.browser_title || defaultSiteSettings.browser_title),
+        }));
       } else {
         // Jika tabel site_settings kosong, inisialisasi baris id = 1
         try {
@@ -638,13 +762,50 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         console.warn('Notice fetching assignments:', e);
       }
 
-      // 9. Fetch Submissions MURNI DARI DATABASE
-      const { data: dbSubmissions, error: errSub } = await supabase
-        .from('submissions')
-        .select('*')
-        .order('submitted_at', { ascending: false });
-      if (!errSub) {
-        setSubmissions(dbSubmissions || []);
+      // 9. Fetch Submissions MURNI DARI DATABASE (beserta submission_answers)
+      try {
+        const { data: dbSubmissions, error: errSub } = await supabase
+          .from('submissions')
+          .select('*, submission_answers(*)')
+          .order('submitted_at', { ascending: false });
+
+        if (!errSub && dbSubmissions) {
+          setSubmissions(prev => dbSubmissions.map((s: any) => {
+            const cached = prev.find(p => p.id === s.id);
+            const decoded = decodeSubmissionNotes(
+              s.student_notes,
+              s.submission_answers,
+              cached?.answers
+            );
+            return {
+              ...s,
+              student_notes: decoded.student_notes,
+              answers: decoded.answers,
+            };
+          }));
+        } else {
+          const { data: fallbackSub } = await supabase
+            .from('submissions')
+            .select('*')
+            .order('submitted_at', { ascending: false });
+          if (fallbackSub) {
+            setSubmissions(prev => fallbackSub.map((s: any) => {
+              const cached = prev.find(p => p.id === s.id);
+              const decoded = decodeSubmissionNotes(
+                s.student_notes,
+                undefined,
+                cached?.answers
+              );
+              return {
+                ...s,
+                student_notes: decoded.student_notes,
+                answers: decoded.answers,
+              };
+            }));
+          }
+        }
+      } catch (e) {
+        console.warn('Notice fetching submissions:', e);
       }
 
       // 10. Fetch Grades MURNI DARI DATABASE
@@ -679,6 +840,12 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const updateSiteSettings = async (settings: Partial<SiteSettings>): Promise<{ success: boolean; error?: string }> => {
     const updatedSettings = { ...siteSettings, ...settings, updated_at: new Date().toISOString() };
     setSiteSettings(updatedSettings);
+    if (settings.logo_url !== undefined) {
+      localStorage.setItem('nexora_logo_url', settings.logo_url || '');
+    }
+    if (settings.browser_title !== undefined) {
+      localStorage.setItem('nexora_browser_title', settings.browser_title || '');
+    }
 
     if (isSupabaseConfigured) {
       try {
@@ -686,6 +853,8 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
           id: 1,
           site_name: updatedSettings.site_name,
           tagline: updatedSettings.tagline,
+          browser_title: updatedSettings.browser_title || defaultSiteSettings.browser_title,
+          logo_url: updatedSettings.logo_url || null,
           teacher_name: updatedSettings.teacher_name,
           teacher_bio: updatedSettings.teacher_bio,
           teacher_photo_url: updatedSettings.teacher_photo_url,
@@ -1766,45 +1935,122 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     fileUrls?: string[]
   ): Promise<{ success: boolean; error?: string }> => {
     const asg = assignments.find(a => a.id === assignmentId);
+    const asgQuestions = asg
+      ? (asg.question_ids && asg.question_ids.length > 0
+          ? questions.filter(q => asg.question_ids!.includes(q.id))
+          : questions.filter(q => q.subject_id === asg.subject_id))
+      : questions;
+
     let autoScore = 0;
     let hasEssay = false;
+    const nowIso = new Date().toISOString();
+    const existingSub = submissions.find(
+      s => s.assignment_id === assignmentId && s.student_id === studentId
+    );
+    const existingGrade = grades.find(
+      g => g.assignment_id === assignmentId && g.student_id === studentId
+    );
 
-    questions.forEach(q => {
-      const ans = answers[q.id];
-      if (!ans) return;
-      if (q.question_type === 'multiple_choice' || q.question_type === 'true_false') {
-        const correctOpt = q.options?.find(o => o.is_correct);
-        if (correctOpt && ans.selected_option_id === correctOpt.id) {
-          autoScore += Number(q.points);
-        }
-      } else if (q.question_type === 'short_answer') {
-        if (q.short_answer_key && ans.answer_text?.trim().toLowerCase() === q.short_answer_key.trim().toLowerCase()) {
-          autoScore += Number(q.points);
-        }
-      } else if (q.question_type === 'essay') {
+    // Jika sudah dinilai oleh guru, kunci jawaban agar tidak bisa diubah lagi
+    if (existingSub && (existingSub.status === 'graded' || existingGrade)) {
+      return {
+        success: false,
+        error: 'Jawaban sudah dinilai oleh guru dan tidak dapat diubah kembali.',
+      };
+    }
+
+    const subId = existingSub ? existingSub.id : generateUUID();
+    const submissionAnswersList: SubmissionAnswer[] = [];
+    const essaySummaries: string[] = [];
+
+    asgQuestions.forEach((q, idx) => {
+      if (q.question_type === 'essay') {
         hasEssay = true;
+      }
+      const ans = answers[q.id];
+      let questionScore: number | null = 0;
+
+      if (ans) {
+        if (q.question_type === 'multiple_choice' || q.question_type === 'true_false') {
+          const correctOpt = q.options?.find(o => o.is_correct);
+          if (correctOpt && ans.selected_option_id === correctOpt.id) {
+            questionScore = Number(q.points);
+            autoScore += Number(q.points);
+          } else {
+            questionScore = 0;
+          }
+        } else if (q.question_type === 'short_answer') {
+          if (
+            q.short_answer_key &&
+            ans.answer_text?.trim().toLowerCase() === q.short_answer_key.trim().toLowerCase()
+          ) {
+            questionScore = Number(q.points);
+            autoScore += Number(q.points);
+          } else {
+            questionScore = 0;
+          }
+          if (ans.answer_text && ans.answer_text.trim()) {
+            essaySummaries.push(`No.${idx + 1} (Isian): ${ans.answer_text.trim()}`);
+          }
+        } else if (q.question_type === 'essay') {
+          questionScore = null;
+          if (ans.answer_text && ans.answer_text.trim()) {
+            essaySummaries.push(`No.${idx + 1} (Esai): ${ans.answer_text.trim()}`);
+          }
+        }
+
+        submissionAnswersList.push({
+          id: generateUUID(),
+          submission_id: subId,
+          question_id: q.id,
+          selected_option_id: ans.selected_option_id || null,
+          answer_text: ans.answer_text || null,
+          file_url: ans.file_url || null,
+          score: questionScore,
+          teacher_comment: null,
+          created_at: nowIso,
+        });
+      } else if (q.question_type === 'essay' || q.question_type === 'short_answer') {
+        submissionAnswersList.push({
+          id: generateUUID(),
+          submission_id: subId,
+          question_id: q.id,
+          selected_option_id: null,
+          answer_text: '',
+          file_url: null,
+          score: q.question_type === 'essay' ? null : 0,
+          teacher_comment: null,
+          created_at: nowIso,
+        });
       }
     });
 
     const isQuiz = asg?.type === 'quiz';
     const status = hasEssay || !isQuiz ? 'submitted' : 'graded';
-    const subId = generateUUID();
+
+    const resolvedCleanNotes =
+      studentNotes && studentNotes.trim()
+        ? studentNotes.trim()
+        : essaySummaries.length > 0
+        ? essaySummaries.join(' | ')
+        : null;
 
     const newSub: Submission = {
       id: subId,
       assignment_id: assignmentId,
       student_id: studentId,
-      started_at: new Date().toISOString(),
-      submitted_at: new Date().toISOString(),
+      started_at: existingSub?.started_at || nowIso,
+      submitted_at: nowIso,
       status: status,
-      total_score: status === 'graded' ? autoScore : null,
+      total_score: status === 'graded' ? autoScore : (autoScore > 0 ? autoScore : null),
       file_urls: fileUrls || null,
-      student_notes: studentNotes || null,
+      student_notes: resolvedCleanNotes,
       teacher_feedback: status === 'graded' ? 'Penilaian otomatis sistem selesai.' : null,
       graded_by: status === 'graded' ? 'system' : null,
-      graded_at: status === 'graded' ? new Date().toISOString() : null,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
+      graded_at: status === 'graded' ? nowIso : null,
+      created_at: existingSub?.created_at || nowIso,
+      updated_at: nowIso,
+      answers: submissionAnswersList,
     };
 
     setSubmissions(prev => [newSub, ...prev.filter(s => !(s.assignment_id === assignmentId && s.student_id === studentId))]);
@@ -1823,8 +2069,8 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         max_score: asg?.total_points || 100,
         feedback: 'Dinilai secara otomatis oleh sistem.',
         is_published: true,
-        published_at: new Date().toISOString(),
-        created_at: new Date().toISOString(),
+        published_at: nowIso,
+        created_at: nowIso,
       };
       setGrades(prev => [newGrade, ...prev.filter(g => !(g.assignment_id === assignmentId && g.student_id === studentId))]);
 
@@ -1850,18 +2096,40 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     if (isSupabaseConfigured && isValidUUID(assignmentId) && isValidUUID(studentId)) {
       try {
-        const { error } = await supabase.from('submissions').insert([{
+        const encodedNotes = encodeSubmissionNotes(resolvedCleanNotes, submissionAnswersList);
+        const { error } = await supabase.from('submissions').upsert([{
           id: subId,
           assignment_id: assignmentId,
           student_id: studentId,
-          submitted_at: new Date().toISOString(),
+          submitted_at: nowIso,
           status: status,
-          total_score: status === 'graded' ? autoScore : null,
-          student_notes: studentNotes || null,
-        }]);
+          total_score: status === 'graded' ? autoScore : (autoScore > 0 ? autoScore : null),
+          student_notes: encodedNotes,
+          file_urls: fileUrls || null,
+        }], { onConflict: 'assignment_id,student_id' });
         if (error) {
           console.error('Error submitting to Supabase:', error);
           return { success: false, error: error.message };
+        }
+
+        if (submissionAnswersList.length > 0) {
+          const validRows = submissionAnswersList
+            .filter(sa => isValidUUID(sa.question_id))
+            .map(sa => ({
+              id: sa.id,
+              submission_id: subId,
+              question_id: sa.question_id,
+              selected_option_id: isValidUUID(sa.selected_option_id) ? sa.selected_option_id : null,
+              student_answer_text: sa.answer_text || null,
+              file_url: sa.file_url || null,
+              score: sa.score ?? 0,
+            }));
+
+          if (validRows.length > 0) {
+            await supabase.from('submission_answers').upsert(validRows, {
+              onConflict: 'submission_id,question_id',
+            });
+          }
         }
       } catch (e: any) {
         console.error('Exception submitting assignment:', e);
@@ -1878,30 +2146,33 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     feedback: string,
     _itemScores?: Record<string, { score: number; comment?: string }>
   ): Promise<{ success: boolean; error?: string }> => {
-    let targetSub: Submission | undefined;
-    setSubmissions(prev =>
-      prev.map(s => {
-        if (s.id === submissionId) {
-          targetSub = {
-            ...s,
-            total_score: totalScore,
-            teacher_feedback: feedback,
-            status: 'graded',
-            graded_by: 'p-admin',
-            graded_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
-          };
-          return targetSub;
+    const existingSub = submissions.find(s => s.id === submissionId);
+    const nowIso = new Date().toISOString();
+
+    const updatedSub: Submission | undefined = existingSub
+      ? {
+          ...existingSub,
+          total_score: totalScore,
+          teacher_feedback: feedback,
+          status: 'graded',
+          graded_by: 'p-admin',
+          graded_at: nowIso,
+          updated_at: nowIso,
         }
-        return s;
-      })
+      : undefined;
+
+    setSubmissions(prev =>
+      prev.map(s => (s.id === submissionId && updatedSub ? updatedSub : s))
     );
 
-    if (targetSub) {
-      const sub = targetSub as Submission;
+    if (updatedSub) {
+      const sub = updatedSub;
       const asg = assignments.find(a => a.id === sub.assignment_id);
       const studentObj = students.find(s => s.id === sub.student_id);
-      const gradeId = generateUUID();
+      const existingGrade = grades.find(
+        g => g.assignment_id === sub.assignment_id && g.student_id === sub.student_id
+      );
+      const gradeId = existingGrade?.id || generateUUID();
 
       const newGrade: Grade = {
         id: gradeId,
@@ -1914,8 +2185,8 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         max_score: asg?.total_points || 100,
         feedback: feedback,
         is_published: true,
-        published_at: new Date().toISOString(),
-        created_at: new Date().toISOString(),
+        published_at: nowIso,
+        created_at: existingGrade?.created_at || nowIso,
       };
 
       setGrades(prev => [newGrade, ...prev.filter(g => !(g.assignment_id === sub.assignment_id && g.student_id === sub.student_id))]);
@@ -1926,7 +2197,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
             total_score: totalScore,
             teacher_feedback: feedback,
             status: 'graded',
-            graded_at: new Date().toISOString(),
+            graded_at: nowIso,
           }).eq('id', submissionId);
 
           if (isValidUUID(sub.student_id) && isValidUUID(sub.assignment_id)) {
@@ -1949,6 +2220,148 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
       }
     }
+    return { success: true };
+  };
+
+  const gradeStudentAssignment = async (
+    studentId: string,
+    assignmentId: string,
+    totalScore: number,
+    feedback: string
+  ): Promise<{ success: boolean; error?: string }> => {
+    const existingSub = submissions.find(
+      s => s.student_id === studentId && s.assignment_id === assignmentId
+    );
+    if (existingSub) {
+      return gradeSubmission(existingSub.id, totalScore, feedback);
+    }
+
+    const nowIso = new Date().toISOString();
+    const subId = generateUUID();
+    const asg = assignments.find(a => a.id === assignmentId);
+    const studentObj = students.find(s => s.id === studentId);
+    const existingGrade = grades.find(
+      g => g.assignment_id === assignmentId && g.student_id === studentId
+    );
+    const gradeId = existingGrade?.id || generateUUID();
+
+    const newSub: Submission = {
+      id: subId,
+      assignment_id: assignmentId,
+      student_id: studentId,
+      started_at: nowIso,
+      submitted_at: nowIso,
+      status: 'graded',
+      total_score: totalScore,
+      student_notes: 'Penilaian langsung oleh guru.',
+      file_urls: null,
+      teacher_feedback: feedback,
+      graded_by: 'p-admin',
+      graded_at: nowIso,
+      created_at: nowIso,
+      updated_at: nowIso,
+    };
+
+    const newGrade: Grade = {
+      id: gradeId,
+      student_id: studentId,
+      class_id: studentObj?.class_id || '',
+      subject_id: asg?.subject_id || '',
+      assignment_id: assignmentId,
+      submission_id: subId,
+      score: totalScore,
+      max_score: asg?.total_points || 100,
+      feedback: feedback,
+      is_published: true,
+      published_at: nowIso,
+      created_at: existingGrade?.created_at || nowIso,
+    };
+
+    setSubmissions(prev => [
+      newSub,
+      ...prev.filter(s => !(s.assignment_id === assignmentId && s.student_id === studentId)),
+    ]);
+    setGrades(prev => [
+      newGrade,
+      ...prev.filter(g => !(g.assignment_id === assignmentId && g.student_id === studentId)),
+    ]);
+
+    if (isSupabaseConfigured && isValidUUID(studentId) && isValidUUID(assignmentId)) {
+      try {
+        await supabase.from('submissions').insert([{
+          id: subId,
+          assignment_id: assignmentId,
+          student_id: studentId,
+          submitted_at: nowIso,
+          status: 'graded',
+          total_score: totalScore,
+          student_notes: 'Penilaian langsung oleh guru.',
+          teacher_feedback: feedback,
+          graded_at: nowIso,
+        }]);
+
+        await supabase.from('grades').upsert([{
+          id: gradeId,
+          student_id: studentId,
+          class_id: isValidUUID(studentObj?.class_id) ? studentObj?.class_id : null,
+          subject_id: isValidUUID(asg?.subject_id) ? asg?.subject_id : null,
+          assignment_id: assignmentId,
+          submission_id: subId,
+          score: totalScore,
+          max_score: asg?.total_points || 100,
+          feedback: feedback,
+          is_published: true,
+        }]);
+      } catch (e: any) {
+        console.warn('Notice saving manual grade to Supabase:', e);
+      }
+    }
+
+    return { success: true };
+  };
+
+  const deleteSubmission = async (
+    submissionId: string
+  ): Promise<{ success: boolean; error?: string }> => {
+    const targetSub = submissions.find(s => s.id === submissionId);
+
+    setSubmissions(prev => prev.filter(s => s.id !== submissionId));
+    if (targetSub) {
+      setGrades(prev =>
+        prev.filter(
+          g =>
+            g.submission_id !== submissionId &&
+            !(g.student_id === targetSub.student_id && g.assignment_id === targetSub.assignment_id)
+        )
+      );
+    } else {
+      setGrades(prev => prev.filter(g => g.submission_id !== submissionId));
+    }
+
+    if (isSupabaseConfigured) {
+      try {
+        if (isValidUUID(submissionId)) {
+          await supabase.from('submission_answers').delete().eq('submission_id', submissionId);
+          await supabase.from('grades').delete().eq('submission_id', submissionId);
+          await supabase.from('submissions').delete().eq('id', submissionId);
+        }
+        if (targetSub && isValidUUID(targetSub.student_id) && isValidUUID(targetSub.assignment_id)) {
+          await supabase
+            .from('grades')
+            .delete()
+            .eq('student_id', targetSub.student_id)
+            .eq('assignment_id', targetSub.assignment_id);
+          await supabase
+            .from('submissions')
+            .delete()
+            .eq('student_id', targetSub.student_id)
+            .eq('assignment_id', targetSub.assignment_id);
+        }
+      } catch (e: any) {
+        console.warn('Notice deleting submission from Supabase:', e);
+      }
+    }
+
     return { success: true };
   };
 
@@ -2193,6 +2606,8 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         submissions,
         submitAssignment,
         gradeSubmission,
+        gradeStudentAssignment,
+        deleteSubmission,
         grades,
         announcements,
         addAnnouncement,

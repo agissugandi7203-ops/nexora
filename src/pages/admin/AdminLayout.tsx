@@ -17,7 +17,9 @@ import {
   ExternalLink,
   UserCheck,
   Menu,
-  ChevronLeft
+  ChevronLeft,
+  FileSpreadsheet,
+  User
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useData } from '../../context/DataContext';
@@ -33,6 +35,8 @@ import { AdminSubmissions } from './tabs/AdminSubmissions';
 import { AdminGrading } from './tabs/AdminGrading';
 import { AdminSettings } from './tabs/AdminSettings';
 import { AdminApprovals } from './tabs/AdminApprovals';
+import { AdminProfile } from './tabs/AdminProfile';
+import { StudentTaskReportTable } from './components/StudentTaskReportTable';
 import { DashboardSidebar, NavGroup } from '../../components/dashboard/DashboardSidebar';
 import '../../styles/dashboard.css';
 
@@ -93,6 +97,7 @@ export const AdminLayout: React.FC = () => {
         { id: 'classes', label: 'Manajemen Kelas', icon: School },
         { id: 'subjects', label: 'Mata Pelajaran', icon: BookOpen },
         { id: 'question_bank', label: 'Bank Soal', icon: HelpCircle },
+        { id: 'task_report', label: 'Laporan Tugas Siswa', icon: FileSpreadsheet },
         { id: 'grading', label: 'Penilaian & Rekap', icon: Award },
       ],
     },
@@ -105,6 +110,7 @@ export const AdminLayout: React.FC = () => {
           icon: Inbox,
           badge: pendingSubmissionsCount > 0 ? pendingSubmissionsCount : undefined,
         },
+        { id: 'profile', label: 'Profil & Akun Login', icon: User },
         { id: 'settings', label: 'Pengaturan Website', icon: Settings },
       ],
     },
@@ -142,6 +148,10 @@ export const AdminLayout: React.FC = () => {
         return <AdminSubmissions />;
       case 'grading':
         return <AdminGrading />;
+      case 'task_report':
+        return <StudentTaskReportTable />;
+      case 'profile':
+        return <AdminProfile />;
       case 'settings':
         return <AdminSettings />;
       default:
